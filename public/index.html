@@ -1420,6 +1420,11 @@
         pullIndicator.classList.remove('ready');
         pullIndicator.classList.add('refreshing');
 
+        // Save current session before reload
+        if (currentSession) {
+          localStorage.setItem('lastSessionId', currentSession.id);
+        }
+
         // Small delay for visual feedback, then reload
         setTimeout(() => {
           window.location.reload();
@@ -1434,7 +1439,17 @@
     }, { passive: true });
 
     // Init
-    loadSessions();
+    loadSessions().then(() => {
+      // Restore last session if saved (e.g., after pull-to-refresh)
+      const lastSessionId = localStorage.getItem('lastSessionId');
+      if (lastSessionId) {
+        localStorage.removeItem('lastSessionId');
+        const session = sessions.find(s => s.id === lastSessionId);
+        if (session) {
+          selectSession(session);
+        }
+      }
+    });
   </script>
 </body>
 </html>
