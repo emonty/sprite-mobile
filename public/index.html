@@ -6,7 +6,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1a1a1a">
-  <title>Claude Code</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>Sprite Code</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <style>
     * {
@@ -141,21 +143,23 @@
     }
 
     .session-delete {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border: none;
-      background: transparent;
+      background: var(--bg-tertiary);
       color: var(--text-muted);
       cursor: pointer;
-      border-radius: 4px;
-      display: none;
-    }
-
-    .session-item:hover .session-delete,
-    .session-item:active .session-delete {
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .session-delete:active {
+      background: #ef4444;
+      color: white;
     }
 
     /* Overlay */
@@ -505,13 +509,13 @@
     <div id="main">
       <header>
         <button id="menu-btn">☰</button>
-        <h1 id="chat-title">Claude Code</h1>
+        <h1 id="chat-title">Sprite Code</h1>
         <div id="status">Disconnected</div>
       </header>
 
       <div id="empty-state">
-        <h2>Welcome to Claude Code</h2>
-        <p>Start a new chat to begin coding with Claude</p>
+        <h2>Welcome to Sprite Code</h2>
+        <p>Start a new chat to begin coding</p>
         <button id="start-chat-btn">New Chat</button>
       </div>
 
@@ -586,6 +590,7 @@
       const res = await fetch('/api/sessions');
       sessions = await res.json();
       renderSessionsList();
+      return sessions;
     }
 
     async function createSession(name) {
@@ -658,7 +663,7 @@
     }
 
     function showEmptyState() {
-      chatTitle.textContent = 'Claude Code';
+      chatTitle.textContent = 'Sprite Code';
       emptyState.style.display = 'flex';
       messagesEl.classList.remove('active');
       inputArea.classList.remove('active');
@@ -731,8 +736,23 @@
           break;
 
         case 'refresh_sessions':
-          // Refresh sidebar
-          loadSessions();
+          // Refresh sidebar and update current chat title if changed
+          loadSessions().then(() => {
+            if (currentSession) {
+              const updated = sessions.find(s => s.id === currentSession.id);
+              if (updated && updated.name !== currentSession.name) {
+                currentSession.name = updated.name;
+                chatTitle.textContent = updated.name;
+              }
+            }
+          });
+          break;
+
+        case 'processing':
+          // Claude is still working (reconnected to running process)
+          if (msg.isProcessing) {
+            showThinkingIndicator();
+          }
           break;
 
         case 'assistant':

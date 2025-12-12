@@ -1,5 +1,5 @@
 import { spawn, type Subprocess } from "bun";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 
 const PORT = 8080;
@@ -20,7 +20,8 @@ interface ChatSession {
   createdAt: number;
   lastMessageAt: number;
   lastMessage?: string;
-  claudeSessionId?: string; // Claude's internal session ID for --resume
+  claudeSessionId?: string;
+  isProcessing?: boolean; // True if Claude is working on a response
 }
 
 interface StoredMessage {
@@ -28,6 +29,18 @@ interface StoredMessage {
   content: string;
   timestamp: number;
 }
+
+// Background process tracking - persists across WebSocket reconnects
+interface BackgroundProcess {
+  process: Subprocess;
+  buffer: string;
+  assistantBuffer: string;
+  sessionId: string;
+  ws: WebSocket | null; // null if client disconnected
+  startedAt: number;
+}
+
+const backgroundProcesses = new Map<string, BackgroundProcess>();
 
 // Session storage
 function loadSessions(): ChatSession[] {
@@ -81,14 +94,32 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
-// Track active connections
-const activeConnections = new Map<WebSocket, {
-  process: Subprocess;
-  buffer: string;
-  sessionId: string;
-  assistantBuffer: string; // Accumulate assistant response
-}>();
+// Generate a chat name from the first message using Claude
+async function generateChatName(message: string, sessionId: string, bg: BackgroundProcess): Promise<void> {
+  try {
+    const prompt = `Generate a very short title (3-5 words max) for a chat that starts with this message. Reply with ONLY the title, no quotes or punctuation:\n\n${message.slice(0, 500)}`;
 
+    const proc = spawn({
+      cmd: ["claude", "--print", "-p", prompt],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    const output = await new Response(proc.stdout).text();
+    const title = output.trim().slice(0, 50) || "New Chat";
+
+    updateSession(sessionId, { name: title });
+    trySend(bg, JSON.stringify({ type: "refresh_sessions" }));
+  } catch (err) {
+    console.error("Failed to generate chat name:", err);
+    // Fallback to truncated message
+    const fallback = message.slice(0, 40).trim() + (message.length > 40 ? "..." : "");
+    updateSession(sessionId, { name: fallback || "New Chat" });
+    trySend(bg, JSON.stringify({ type: "refresh_sessions" }));
+  }
+}
+
+// Spawn Claude process
 function spawnClaude(cwd: string, claudeSessionId?: string): Subprocess {
   const cmd = [
     "claude",
@@ -99,7 +130,6 @@ function spawnClaude(cwd: string, claudeSessionId?: string): Subprocess {
     "--input-format", "stream-json",
   ];
 
-  // Resume existing Claude session if we have one
   if (claudeSessionId) {
     cmd.push("--resume", claudeSessionId);
   }
@@ -113,13 +143,20 @@ function spawnClaude(cwd: string, claudeSessionId?: string): Subprocess {
   });
 }
 
-async function handleClaudeOutput(ws: WebSocket, connection: {
-  process: Subprocess;
-  buffer: string;
-  sessionId: string;
-  assistantBuffer: string;
-}) {
-  const reader = connection.process.stdout.getReader();
+// Send to WebSocket if connected, otherwise just log
+function trySend(bg: BackgroundProcess, data: string) {
+  if (bg.ws && bg.ws.readyState === 1) { // OPEN
+    try {
+      bg.ws.send(data);
+    } catch {
+      bg.ws = null;
+    }
+  }
+}
+
+// Handle Claude output - continues even if client disconnects
+async function handleClaudeOutput(bg: BackgroundProcess) {
+  const reader = bg.process.stdout.getReader();
   const decoder = new TextDecoder();
 
   try {
@@ -127,20 +164,22 @@ async function handleClaudeOutput(ws: WebSocket, connection: {
       const { done, value } = await reader.read();
       if (done) break;
 
-      connection.buffer += decoder.decode(value, { stream: true });
-      const lines = connection.buffer.split("\n");
-      connection.buffer = lines.pop() || "";
+      bg.buffer += decoder.decode(value, { stream: true });
+      const lines = bg.buffer.split("\n");
+      bg.buffer = lines.pop() || "";
 
       for (const line of lines) {
         if (!line.trim()) continue;
 
         try {
           const msg = JSON.parse(line);
-          ws.send(JSON.stringify(msg));
+
+          // Always send to client if connected
+          trySend(bg, JSON.stringify(msg));
 
           // Capture Claude's session ID from init
           if (msg.type === "system" && msg.subtype === "init" && msg.session_id) {
-            updateSession(connection.sessionId, { claudeSessionId: msg.session_id });
+            updateSession(bg.sessionId, { claudeSessionId: msg.session_id });
           }
 
           // Accumulate assistant text
@@ -149,25 +188,25 @@ async function handleClaudeOutput(ws: WebSocket, connection: {
             if (Array.isArray(content)) {
               const textBlock = content.find((b: any) => b.type === "text");
               if (textBlock?.text) {
-                connection.assistantBuffer = textBlock.text;
+                bg.assistantBuffer = textBlock.text;
               }
             }
           }
 
           // Save complete assistant message
-          if (msg.type === "result" && connection.assistantBuffer) {
-            saveMessage(connection.sessionId, {
+          if (msg.type === "result" && bg.assistantBuffer) {
+            saveMessage(bg.sessionId, {
               role: "assistant",
-              content: connection.assistantBuffer,
+              content: bg.assistantBuffer,
               timestamp: Date.now(),
             });
-            updateSession(connection.sessionId, {
+            updateSession(bg.sessionId, {
               lastMessageAt: Date.now(),
-              lastMessage: connection.assistantBuffer.slice(0, 100),
+              lastMessage: bg.assistantBuffer.slice(0, 100),
+              isProcessing: false,
             });
-            // Notify client to refresh sidebar
-            ws.send(JSON.stringify({ type: "refresh_sessions" }));
-            connection.assistantBuffer = "";
+            trySend(bg, JSON.stringify({ type: "refresh_sessions" }));
+            bg.assistantBuffer = "";
           }
         } catch {}
       }
@@ -176,11 +215,16 @@ async function handleClaudeOutput(ws: WebSocket, connection: {
     console.error("Error reading Claude output:", err);
   }
 
-  ws.send(JSON.stringify({ type: "system", message: "Session ended" }));
+  // Process finished - clean up
+  console.log(`Claude process finished for session ${bg.sessionId}`);
+  updateSession(bg.sessionId, { isProcessing: false });
+  trySend(bg, JSON.stringify({ type: "system", message: "Claude finished" }));
+  backgroundProcesses.delete(bg.sessionId);
 }
 
-async function handleClaudeStderr(ws: WebSocket, process: Subprocess) {
-  const reader = process.stderr.getReader();
+// Handle stderr - just forward to client if connected
+async function handleClaudeStderr(bg: BackgroundProcess) {
+  const reader = bg.process.stderr.getReader();
   const decoder = new TextDecoder();
 
   try {
@@ -189,7 +233,7 @@ async function handleClaudeStderr(ws: WebSocket, process: Subprocess) {
       if (done) break;
       const text = decoder.decode(value, { stream: true });
       if (text.trim()) {
-        ws.send(JSON.stringify({ type: "stderr", message: text }));
+        trySend(bg, JSON.stringify({ type: "stderr", message: text }));
       }
     }
   } catch {}
@@ -201,6 +245,7 @@ function getContentType(path: string): string {
   if (path.endsWith(".js")) return "text/javascript";
   if (path.endsWith(".json")) return "application/json";
   if (path.endsWith(".svg")) return "image/svg+xml";
+  if (path.endsWith(".png")) return "image/png";
   return "text/plain";
 }
 
@@ -211,6 +256,10 @@ function handleApi(req: Request, url: URL): Response | null {
   // GET /api/sessions
   if (req.method === "GET" && path === "/api/sessions") {
     const sessions = loadSessions();
+    // Add real-time processing status
+    for (const s of sessions) {
+      s.isProcessing = backgroundProcesses.has(s.id);
+    }
     sessions.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     return Response.json(sessions);
   }
@@ -258,15 +307,18 @@ function handleApi(req: Request, url: URL): Response | null {
   // DELETE /api/sessions/:id
   if (req.method === "DELETE" && path.startsWith("/api/sessions/")) {
     const id = path.split("/")[3];
+    // Kill any background process
+    const bg = backgroundProcesses.get(id);
+    if (bg) {
+      try { bg.process.kill(9); } catch {}
+      backgroundProcesses.delete(id);
+    }
     let sessions = loadSessions();
     sessions = sessions.filter(s => s.id !== id);
     saveSessions(sessions);
-    // Also delete messages file
     try {
       const msgFile = getMessagesFile(id);
-      if (existsSync(msgFile)) {
-        require("fs").unlinkSync(msgFile);
-      }
+      if (existsSync(msgFile)) unlinkSync(msgFile);
     } catch {}
     return new Response(null, { status: 204 });
   }
@@ -317,41 +369,82 @@ const server = Bun.serve({
         cwd: string;
         claudeSessionId?: string;
       };
+
+      // Check if there's already a background process for this session
+      const existingBg = backgroundProcesses.get(sessionId);
+      if (existingBg) {
+        console.log(`Client reconnected to session ${sessionId} (process still running)`);
+        existingBg.ws = ws;
+
+        // Send history
+        const messages = loadMessages(sessionId);
+        if (messages.length > 0) {
+          ws.send(JSON.stringify({ type: "history", messages }));
+        }
+
+        // Notify client that Claude is still working
+        ws.send(JSON.stringify({ type: "system", message: "Reconnected - Claude is still working", sessionId }));
+        ws.send(JSON.stringify({ type: "processing", isProcessing: true }));
+        return;
+      }
+
       console.log(`Client connected to session ${sessionId}${claudeSessionId ? ` (resuming ${claudeSessionId})` : ""}`);
 
-      // Send stored message history first
+      // Send stored message history
       const messages = loadMessages(sessionId);
       if (messages.length > 0) {
         ws.send(JSON.stringify({ type: "history", messages }));
       }
 
+      // Spawn new Claude process
       const process = spawnClaude(cwd, claudeSessionId);
-      const connection = { process, buffer: "", sessionId, assistantBuffer: "" };
-      activeConnections.set(ws, connection);
+      const bg: BackgroundProcess = {
+        process,
+        buffer: "",
+        assistantBuffer: "",
+        sessionId,
+        ws,
+        startedAt: Date.now(),
+      };
+      backgroundProcesses.set(sessionId, bg);
 
-      handleClaudeOutput(ws, connection);
-      handleClaudeStderr(ws, process);
+      // Start handling output (continues even if ws disconnects)
+      handleClaudeOutput(bg);
+      handleClaudeStderr(bg);
 
       ws.send(JSON.stringify({ type: "system", message: "Connected to Claude Code", sessionId }));
     },
 
     async message(ws, message) {
-      const connection = activeConnections.get(ws);
-      if (!connection) return;
+      const { sessionId } = ws.data as { sessionId: string };
+      const bg = backgroundProcesses.get(sessionId);
+      if (!bg) {
+        ws.send(JSON.stringify({ type: "error", message: "No active Claude process" }));
+        return;
+      }
 
       try {
         const data = JSON.parse(message.toString());
 
         if (data.type === "user" && data.content) {
+          // Check if this is the first message - auto-rename the session
+          const existingMessages = loadMessages(sessionId);
+          const session = getSession(sessionId);
+          if (existingMessages.length === 0 && session?.name.match(/^Chat \d+$/)) {
+            // Fire off title generation in background (don't await)
+            generateChatName(data.content, sessionId, bg);
+          }
+
           // Save user message
-          saveMessage(connection.sessionId, {
+          saveMessage(sessionId, {
             role: "user",
             content: data.content,
             timestamp: Date.now(),
           });
-          updateSession(connection.sessionId, {
+          updateSession(sessionId, {
             lastMessageAt: Date.now(),
             lastMessage: "You: " + data.content.slice(0, 50),
+            isProcessing: true,
           });
 
           // Send to Claude
@@ -360,8 +453,8 @@ const server = Bun.serve({
             message: { role: "user", content: data.content },
           }) + "\n";
 
-          connection.process.stdin.write(claudeMsg);
-          connection.process.stdin.flush();
+          bg.process.stdin.write(claudeMsg);
+          bg.process.stdin.flush();
         }
       } catch (err) {
         console.error("Error handling message:", err);
@@ -369,16 +462,34 @@ const server = Bun.serve({
     },
 
     close(ws) {
-      console.log("Client disconnected");
-      const connection = activeConnections.get(ws);
-      if (connection) {
-        try {
-          connection.process.kill(9);
-        } catch {}
-        activeConnections.delete(ws);
+      const { sessionId } = ws.data as { sessionId: string };
+      const bg = backgroundProcesses.get(sessionId);
+
+      if (bg) {
+        // DON'T kill the process - just detach the websocket
+        console.log(`Client disconnected from session ${sessionId} - Claude continues in background`);
+        bg.ws = null;
+        // Process continues running and will save results
+      } else {
+        console.log(`Client disconnected from session ${sessionId}`);
       }
     },
   },
 });
+
+// Cleanup stale processes after 30 minutes of no activity
+setInterval(() => {
+  const now = Date.now();
+  const maxAge = 30 * 60 * 1000; // 30 minutes
+
+  for (const [sessionId, bg] of backgroundProcesses) {
+    if (now - bg.startedAt > maxAge && !bg.ws) {
+      console.log(`Cleaning up stale process for session ${sessionId}`);
+      try { bg.process.kill(9); } catch {}
+      backgroundProcesses.delete(sessionId);
+      updateSession(sessionId, { isProcessing: false });
+    }
+  }
+}, 60 * 1000); // Check every minute
 
 console.log(`Claude Mobile server running on http://localhost:${PORT}`);

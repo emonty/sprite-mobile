@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- 8-bit style hot air balloon - bigger balloon, smaller basket -->
+
+  <!-- Background - lavender -->
+  <rect width="32" height="32" fill="#c4b5fd"/>
+
+  <!-- Clouds -->
+  <rect x="2" y="8" width="3" height="1" fill="#ddd6fe"/>
+  <rect x="1" y="9" width="5" height="1" fill="#ede9fe"/>
+  <rect x="2" y="10" width="3" height="1" fill="#ddd6fe"/>
+  <rect x="25" y="20" width="4" height="1" fill="#ddd6fe"/>
+  <rect x="24" y="21" width="6" height="1" fill="#ede9fe"/>
+  <rect x="25" y="22" width="4" height="1" fill="#ddd6fe"/>
+
+  <!-- Balloon - row 1 (top) - pushed down 4px -->
+  <rect x="12" y="5" width="8" height="1" fill="#ede9fe"/>
+
+  <!-- Balloon - row 2 -->
+  <rect x="10" y="6" width="2" height="1" fill="#ddd6fe"/>
+  <rect x="12" y="6" width="8" height="1" fill="#ede9fe"/>
+  <rect x="20" y="6" width="2" height="1" fill="#a78bfa"/>
+
+  <!-- Balloon - row 3 -->
+  <rect x="8" y="7" width="2" height="1" fill="#ddd6fe"/>
+  <rect x="10" y="7" width="3" height="1" fill="#ede9fe"/>
+  <rect x="13" y="7" width="6" height="1" fill="#ddd6fe"/>
+  <rect x="19" y="7" width="3" height="1" fill="#a78bfa"/>
+  <rect x="22" y="7" width="2" height="1" fill="#8b5cf6"/>
+
+  <!-- Balloon - row 4 -->
+  <rect x="7" y="8" width="1" height="1" fill="#ddd6fe"/>
+  <rect x="8" y="8" width="3" height="1" fill="#ede9fe"/>
+  <rect x="11" y="8" width="10" height="1" fill="#ddd6fe"/>
+  <rect x="21" y="8" width="3" height="1" fill="#a78bfa"/>
+  <rect x="24" y="8" width="1" height="1" fill="#8b5cf6"/>
+
+  <!-- Balloon - row 5 -->
+  <rect x="6" y="9" width="1" height="1" fill="#ddd6fe"/>
+  <rect x="7" y="9" width="3" height="1" fill="#ede9fe"/>
+  <rect x="10" y="9" width="12" height="1" fill="#ddd6fe"/>
+  <rect x="22" y="9" width="3" height="1" fill="#a78bfa"/>
+  <rect x="25" y="9" width="1" height="1" fill="#8b5cf6"/>
+
+  <!-- Balloon - row 6-9 (widest part) -->
+  <rect x="5" y="10" width="1" height="4" fill="#ddd6fe"/>
+  <rect x="6" y="10" width="3" height="4" fill="#ede9fe"/>
+  <rect x="9" y="10" width="14" height="4" fill="#a78bfa"/>
+  <rect x="23" y="10" width="3" height="4" fill="#8b5cf6"/>
+  <rect x="26" y="10" width="1" height="4" fill="#7c3aed"/>
+
+  <!-- Balloon - row 10 -->
+  <rect x="5" y="14" width="1" height="1" fill="#a78bfa"/>
+  <rect x="6" y="14" width="3" height="1" fill="#ddd6fe"/>
+  <rect x="9" y="14" width="14" height="1" fill="#8b5cf6"/>
+  <rect x="23" y="14" width="3" height="1" fill="#7c3aed"/>
+  <rect x="26" y="14" width="1" height="1" fill="#6d28d9"/>
+
+  <!-- Balloon - row 11 -->
+  <rect x="6" y="15" width="1" height="1" fill="#a78bfa"/>
+  <rect x="7" y="15" width="3" height="1" fill="#ddd6fe"/>
+  <rect x="10" y="15" width="12" height="1" fill="#7c3aed"/>
+  <rect x="22" y="15" width="3" height="1" fill="#6d28d9"/>
+  <rect x="25" y="15" width="1" height="1" fill="#5b21b6"/>
+
+  <!-- Balloon - row 12 -->
+  <rect x="6" y="16" width="1" height="1" fill="#8b5cf6"/>
+  <rect x="7" y="16" width="3" height="1" fill="#a78bfa"/>
+  <rect x="10" y="16" width="12" height="1" fill="#6d28d9"/>
+  <rect x="22" y="16" width="3" height="1" fill="#5b21b6"/>
+  <rect x="25" y="16" width="1" height="1" fill="#4c1d95"/>
+
+  <!-- Balloon - row 13 -->
+  <rect x="7" y="17" width="1" height="1" fill="#8b5cf6"/>
+  <rect x="8" y="17" width="2" height="1" fill="#a78bfa"/>
+  <rect x="10" y="17" width="12" height="1" fill="#6d28d9"/>
+  <rect x="22" y="17" width="2" height="1" fill="#5b21b6"/>
+  <rect x="24" y="17" width="1" height="1" fill="#4c1d95"/>
+
+  <!-- Balloon - row 14 -->
+  <rect x="8" y="18" width="1" height="1" fill="#7c3aed"/>
+  <rect x="9" y="18" width="2" height="1" fill="#8b5cf6"/>
+  <rect x="11" y="18" width="10" height="1" fill="#5b21b6"/>
+  <rect x="21" y="18" width="2" height="1" fill="#4c1d95"/>
+  <rect x="23" y="18" width="1" height="1" fill="#3b1578"/>
+
+  <!-- Balloon - row 15 -->
+  <rect x="9" y="19" width="1" height="1" fill="#7c3aed"/>
+  <rect x="10" y="19" width="12" height="1" fill="#5b21b6"/>
+  <rect x="22" y="19" width="1" height="1" fill="#4c1d95"/>
+
+  <!-- Balloon - row 16 -->
+  <rect x="10" y="20" width="1" height="1" fill="#6d28d9"/>
+  <rect x="11" y="20" width="10" height="1" fill="#4c1d95"/>
+  <rect x="21" y="20" width="1" height="1" fill="#3b1578"/>
+
+  <!-- Balloon - row 17 (bottom) -->
+  <rect x="12" y="21" width="8" height="1" fill="#4c1d95"/>
+
+  <!-- Balloon opening -->
+  <rect x="14" y="22" width="4" height="1" fill="#3b1578"/>
+
+  <!-- Ropes -->
+  <rect x="14" y="23" width="1" height="1" fill="#92400e"/>
+  <rect x="15" y="24" width="2" height="1" fill="#92400e"/>
+  <rect x="17" y="23" width="1" height="1" fill="#78350f"/>
+
+  <!-- Small basket -->
+  <rect x="14" y="25" width="4" height="1" fill="#d97706"/>
+  <rect x="13" y="26" width="6" height="2" fill="#92400e"/>
+  <rect x="13" y="28" width="6" height="1" fill="#78350f"/>
+
+  <!-- Basket detail -->
+  <rect x="15" y="26" width="1" height="2" fill="#78350f"/>
+  <rect x="13" y="27" width="6" height="1" fill="#b45309"/>
+</svg>
