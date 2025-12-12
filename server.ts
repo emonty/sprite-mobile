@@ -6,6 +6,7 @@ const PORT = 8080;
 const PUBLIC_DIR = join(import.meta.dir, "public");
 const DATA_DIR = join(import.meta.dir, "data");
 const SESSIONS_FILE = join(DATA_DIR, "sessions.json");
+const SPRITES_FILE = join(DATA_DIR, "sprites.json");
 const MESSAGES_DIR = join(DATA_DIR, "messages");
 
 // Ensure directories exist
@@ -28,6 +29,14 @@ interface StoredMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+}
+
+interface SpriteProfile {
+  id: string;
+  name: string;
+  address: string;
+  port: number;
+  createdAt: number;
 }
 
 // Background process tracking - persists across WebSocket reconnects
@@ -67,6 +76,20 @@ function updateSession(id: string, updates: Partial<ChatSession>) {
     Object.assign(session, updates);
     saveSessions(sessions);
   }
+}
+
+// Sprite storage
+function loadSprites(): SpriteProfile[] {
+  try {
+    if (existsSync(SPRITES_FILE)) {
+      return JSON.parse(readFileSync(SPRITES_FILE, "utf-8"));
+    }
+  } catch {}
+  return [];
+}
+
+function saveSprites(sprites: SpriteProfile[]) {
+  writeFileSync(SPRITES_FILE, JSON.stringify(sprites, null, 2));
 }
 
 // Message storage
@@ -320,6 +343,43 @@ function handleApi(req: Request, url: URL): Response | null {
       const msgFile = getMessagesFile(id);
       if (existsSync(msgFile)) unlinkSync(msgFile);
     } catch {}
+    return new Response(null, { status: 204 });
+  }
+
+  // GET /api/sprites
+  if (req.method === "GET" && path === "/api/sprites") {
+    const sprites = loadSprites();
+    sprites.sort((a, b) => b.createdAt - a.createdAt);
+    return Response.json(sprites);
+  }
+
+  // POST /api/sprites
+  if (req.method === "POST" && path === "/api/sprites") {
+    return (async () => {
+      const body = await req.json().catch(() => ({}));
+      if (!body.name || !body.address) {
+        return new Response("Name and address required", { status: 400 });
+      }
+      const sprites = loadSprites();
+      const newSprite: SpriteProfile = {
+        id: generateId(),
+        name: body.name,
+        address: body.address,
+        port: body.port || 8080,
+        createdAt: Date.now(),
+      };
+      sprites.push(newSprite);
+      saveSprites(sprites);
+      return Response.json(newSprite);
+    })();
+  }
+
+  // DELETE /api/sprites/:id
+  if (req.method === "DELETE" && path.match(/^\/api\/sprites\/[^/]+$/)) {
+    const id = path.split("/")[3];
+    let sprites = loadSprites();
+    sprites = sprites.filter(s => s.id !== id);
+    saveSprites(sprites);
     return new Response(null, { status: 204 });
   }
 
