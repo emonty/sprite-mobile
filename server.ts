@@ -54,6 +54,7 @@ interface BackgroundProcess {
   sessionId: string;
   ws: WebSocket | null; // null if client disconnected
   startedAt: number;
+  isGenerating: boolean; // true while Claude is actively responding
 }
 
 const backgroundProcesses = new Map<string, BackgroundProcess>();
@@ -237,6 +238,7 @@ async function handleClaudeOutput(bg: BackgroundProcess) {
             });
             trySend(bg, JSON.stringify({ type: "refresh_sessions" }));
             bg.assistantBuffer = "";
+            bg.isGenerating = false;
           }
         } catch {}
       }
@@ -539,9 +541,11 @@ const server = Bun.serve({
           ws.send(JSON.stringify({ type: "history", messages }));
         }
 
-        // Notify client that Claude is still working
-        ws.send(JSON.stringify({ type: "system", message: "Reconnected - Claude is still working", sessionId }));
-        ws.send(JSON.stringify({ type: "processing", isProcessing: true }));
+        // Only notify if Claude is actively generating a response
+        if (existingBg.isGenerating) {
+          ws.send(JSON.stringify({ type: "system", message: "Reconnected - Claude is still working", sessionId }));
+          ws.send(JSON.stringify({ type: "processing", isProcessing: true }));
+        }
         return;
       }
 
@@ -562,6 +566,7 @@ const server = Bun.serve({
         sessionId,
         ws,
         startedAt: Date.now(),
+        isGenerating: false,
       };
       backgroundProcesses.set(sessionId, bg);
 
@@ -657,6 +662,7 @@ const server = Bun.serve({
             message: { role: "user", content: claudeContent },
           }) + "\n";
 
+          bg.isGenerating = true;
           bg.process.stdin.write(claudeMsg);
           bg.process.stdin.flush();
         }
