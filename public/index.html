@@ -1036,6 +1036,7 @@
     let pendingImage = null; // { id, filename, mediaType, url, localUrl }
     let isEditingTitle = false;
     let messageCountSinceLastTitleUpdate = 0;
+    let pendingUserMessage = false; // True while processing incoming user_message
 
     // Keepalive WebSocket - keeps sprite awake while app is open
     function connectKeepalive() {
@@ -1228,8 +1229,11 @@
           break;
 
         case 'history':
-          // Render stored message history
+          // Render stored message history - clear first to avoid duplicates
           if (msg.messages && Array.isArray(msg.messages)) {
+            messagesEl.innerHTML = '';
+            currentAssistantMessage = null;
+            assistantContent = '';
             for (const m of msg.messages) {
               if (m.role === 'user') {
                 // Build image URL if message has an attached image
@@ -1264,34 +1268,72 @@
 
         case 'user_message':
           // Another client sent a message - display it and show thinking
+          // Set flag to ensure user message is rendered before assistant starts
+          pendingUserMessage = true;
           if (msg.message) {
             const m = msg.message;
             const imageUrl = m.image ? `/api/uploads/${currentSession.id}/${m.image.filename}` : null;
             addUserMessage(m.content, imageUrl);
             showThinkingIndicator();
           }
+          // Small delay to ensure DOM update completes
+          requestAnimationFrame(() => {
+            pendingUserMessage = false;
+          });
           break;
 
         case 'assistant':
-          if (msg.message?.content) {
-            handleAssistantContent(msg.message.content);
-          }
-          if (msg.stop_reason) {
-            finalizeAssistantMessage();
+          // Wait for any pending user message to render first
+          if (pendingUserMessage) {
+            requestAnimationFrame(() => {
+              if (msg.message?.content) {
+                handleAssistantContent(msg.message.content);
+              }
+              if (msg.stop_reason) {
+                finalizeAssistantMessage();
+              }
+            });
+          } else {
+            if (msg.message?.content) {
+              handleAssistantContent(msg.message.content);
+            }
+            if (msg.stop_reason) {
+              finalizeAssistantMessage();
+            }
           }
           break;
 
         case 'content_block_start':
-          if (msg.content_block?.type === 'text') {
-            startAssistantMessage();
-          } else if (msg.content_block?.type === 'tool_use') {
-            addToolIndicator(msg.content_block.name);
+          // Wait for any pending user message to render first
+          if (pendingUserMessage) {
+            requestAnimationFrame(() => {
+              if (msg.content_block?.type === 'text') {
+                startAssistantMessage();
+              } else if (msg.content_block?.type === 'tool_use') {
+                addToolIndicator(msg.content_block.name);
+              }
+            });
+          } else {
+            if (msg.content_block?.type === 'text') {
+              startAssistantMessage();
+            } else if (msg.content_block?.type === 'tool_use') {
+              addToolIndicator(msg.content_block.name);
+            }
           }
           break;
 
         case 'content_block_delta':
-          if (msg.delta?.type === 'text_delta') {
-            appendAssistantText(msg.delta.text);
+          // Wait for any pending user message to render first
+          if (pendingUserMessage) {
+            requestAnimationFrame(() => {
+              if (msg.delta?.type === 'text_delta') {
+                appendAssistantText(msg.delta.text);
+              }
+            });
+          } else {
+            if (msg.delta?.type === 'text_delta') {
+              appendAssistantText(msg.delta.text);
+            }
           }
           break;
 
@@ -1457,6 +1499,10 @@
         payload.imageFilename = pendingImage.filename;
         payload.imageMediaType = pendingImage.mediaType;
       }
+
+      // Reset assistant state before adding user message to ensure clean ordering
+      currentAssistantMessage = null;
+      assistantContent = '';
 
       addUserMessage(text, hasImage ? pendingImage.localUrl : null);
       ws.send(JSON.stringify(payload));

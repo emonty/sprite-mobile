@@ -708,6 +708,7 @@ const server = Bun.serve({
           });
 
           // Broadcast user message to OTHER clients (not the sender)
+          // Must complete BEFORE sending to Claude to avoid race condition
           for (const client of bg.clients) {
             if (client !== ws && client.readyState === 1) {
               try {
@@ -715,6 +716,9 @@ const server = Bun.serve({
               } catch {}
             }
           }
+
+          // Small delay to ensure client-side renders user message before assistant starts
+          await new Promise(resolve => setTimeout(resolve, 50));
 
           // Send to Claude
           const claudeMsg = JSON.stringify({
