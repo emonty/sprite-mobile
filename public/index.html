@@ -35,12 +35,18 @@
       --sidebar-width: 280px;
     }
 
-    html, body {
+    html {
       height: 100%;
-      min-height: 100%;
-      min-height: -webkit-fill-available;
+      background: var(--bg);
+    }
+
+    body {
+      height: 100%;
+      min-height: 100dvh;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
-      background: var(--bg-secondary);
+      background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
       font-size: 16px;
@@ -50,11 +56,10 @@
 
     /* Layout */
     #app {
+      position: fixed;
+      inset: 0;
       display: flex;
-      height: 100%;
-      height: 100dvh;
-      min-height: 100%;
-      min-height: -webkit-fill-available;
+      background: var(--bg);
     }
 
     /* Sidebar */
@@ -191,11 +196,11 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      height: 100%;
       padding-top: var(--safe-top);
       min-width: 0;
       max-width: 100%;
-      overflow: hidden;
+      overflow: visible;
+      background: var(--bg-secondary);
     }
 
     /* Header */
@@ -346,7 +351,7 @@
 
     /* Messages area */
     #messages {
-      flex: 1;
+      flex: 1 1 auto;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 16px;
@@ -354,6 +359,7 @@
       display: none;
       min-width: 0;
       max-width: 100%;
+      min-height: 0;
     }
 
     #messages.active {
@@ -505,17 +511,29 @@
 
     /* Input area */
     #input-area {
-      flex-shrink: 0;
+      flex: 0 0 auto;
       padding: 12px 16px;
-      padding-bottom: calc(12px + var(--safe-bottom));
+      padding-bottom: 12px;
       background: var(--bg-secondary);
       border-top: 1px solid var(--border);
       display: none;
+      position: relative;
     }
-
 
     #input-area.active {
       display: block;
+    }
+
+    /* Extend input background to cover safe area and any gap below */
+    #input-area::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      height: 200px; /* Large enough to cover any gap */
+      background: var(--bg-secondary);
+      pointer-events: none;
     }
 
     #input-wrapper {

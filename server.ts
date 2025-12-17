@@ -677,13 +677,11 @@ const server = Bun.serve({
                 },
               ];
 
-              // Add text if provided
-              if (data.content) {
-                claudeContent.push({
-                  type: "text",
-                  text: data.content,
-                });
-              }
+              // Add text - either provided content or a placeholder for image-only messages
+              claudeContent.push({
+                type: "text",
+                text: data.content || "What's in this image?",
+              });
 
               imageInfo = {
                 id: data.imageId,
