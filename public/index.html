@@ -1086,28 +1086,39 @@
     // Public URL keepalive - pings the public URL every 30 seconds to wake sprite from sleep
     let spritePublicUrl = null;
     let publicKeepaliveInterval = null;
+    let initialWakeupComplete = false;
 
-    async function initPublicKeepalive() {
+    // Initial wakeup ping - must complete before app starts interacting with the sprite
+    async function wakeUpSprite() {
       try {
         const res = await fetch('/api/config');
         const config = await res.json();
         if (config.publicUrl) {
           spritePublicUrl = config.publicUrl;
-          console.log('Public URL keepalive enabled:', spritePublicUrl);
+          console.log('Waking up sprite via public URL:', spritePublicUrl);
+
+          // Send the initial ping and wait for it to complete (or fail)
+          // This gives the sprite a chance to wake up before we try to load sessions
+          try {
+            await fetch(spritePublicUrl, { mode: 'no-cors', cache: 'no-store' });
+            console.log('Initial wake-up ping sent successfully');
+          } catch (err) {
+            console.log('Initial wake-up ping failed (sprite may be waking)');
+          }
+
+          // Start the ongoing keepalive interval
           startPublicKeepalive();
         }
       } catch (err) {
         console.log('Could not fetch config for public keepalive');
       }
+      initialWakeupComplete = true;
     }
 
     function startPublicKeepalive() {
       if (!spritePublicUrl || publicKeepaliveInterval) return;
 
-      // Ping immediately
-      pingPublicUrl();
-
-      // Then ping every 30 seconds
+      // Ping every 30 seconds (initial ping already sent in wakeUpSprite)
       publicKeepaliveInterval = setInterval(pingPublicUrl, 30000);
     }
 
@@ -1120,9 +1131,6 @@
         .then(() => console.log('Public keepalive ping sent'))
         .catch(() => console.log('Public keepalive ping failed (sprite may be waking)'));
     }
-
-    // Start public keepalive
-    initPublicKeepalive();
 
     // Configure marked
     marked.setOptions({
@@ -2032,8 +2040,14 @@
       pullDistance = 0;
     }, { passive: true });
 
-    // Init
-    loadSessions().then(() => {
+    // Init - wake up sprite first, then load sessions
+    async function init() {
+      // First, ping the public URL to wake up the sprite if it's suspended
+      await wakeUpSprite();
+
+      // Now load sessions and restore state
+      await loadSessions();
+
       // Restore last session if saved (e.g., after pull-to-refresh)
       const lastSessionId = localStorage.getItem('lastSessionId');
       if (lastSessionId) {
@@ -2043,7 +2057,9 @@
           selectSession(session);
         }
       }
-    });
+    }
+
+    init();
   </script>
 </body>
 </html>
