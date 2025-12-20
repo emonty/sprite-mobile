@@ -1,6 +1,9 @@
 # Data (sessions and messages)
 data/
 
+# Environment config
+.env
+
 # Dependencies
 node_modules/
 

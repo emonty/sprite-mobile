@@ -2,7 +2,20 @@ import { spawn, type Subprocess } from "bun";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 
+// Load .env file if present
+const ENV_FILE = join(import.meta.dir, ".env");
+if (existsSync(ENV_FILE)) {
+  const envContent = readFileSync(ENV_FILE, "utf-8");
+  for (const line of envContent.split("\n")) {
+    const [key, ...valueParts] = line.split("=");
+    if (key && valueParts.length > 0) {
+      process.env[key.trim()] = valueParts.join("=").trim();
+    }
+  }
+}
+
 const PORT = parseInt(process.env.PORT || "8081");
+const SPRITE_PUBLIC_URL = process.env.SPRITE_PUBLIC_URL || "";
 const PUBLIC_DIR = join(import.meta.dir, "public");
 const DATA_DIR = join(import.meta.dir, "data");
 const SESSIONS_FILE = join(DATA_DIR, "sessions.json");
@@ -288,6 +301,13 @@ function getContentType(path: string): string {
 // REST API
 function handleApi(req: Request, url: URL): Response | null {
   const path = url.pathname;
+
+  // GET /api/config - returns public configuration for the client
+  if (req.method === "GET" && path === "/api/config") {
+    return Response.json({
+      publicUrl: SPRITE_PUBLIC_URL,
+    });
+  }
 
   // GET /api/sessions
   if (req.method === "GET" && path === "/api/sessions") {

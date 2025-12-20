@@ -1083,6 +1083,47 @@
     // Connect keepalive immediately
     connectKeepalive();
 
+    // Public URL keepalive - pings the public URL every 30 seconds to wake sprite from sleep
+    let spritePublicUrl = null;
+    let publicKeepaliveInterval = null;
+
+    async function initPublicKeepalive() {
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        if (config.publicUrl) {
+          spritePublicUrl = config.publicUrl;
+          console.log('Public URL keepalive enabled:', spritePublicUrl);
+          startPublicKeepalive();
+        }
+      } catch (err) {
+        console.log('Could not fetch config for public keepalive');
+      }
+    }
+
+    function startPublicKeepalive() {
+      if (!spritePublicUrl || publicKeepaliveInterval) return;
+
+      // Ping immediately
+      pingPublicUrl();
+
+      // Then ping every 30 seconds
+      publicKeepaliveInterval = setInterval(pingPublicUrl, 30000);
+    }
+
+    function pingPublicUrl() {
+      if (!spritePublicUrl) return;
+
+      // Use fetch with no-cors mode to ping the public URL
+      // This will wake the sprite even if it's sleeping
+      fetch(spritePublicUrl, { mode: 'no-cors', cache: 'no-store' })
+        .then(() => console.log('Public keepalive ping sent'))
+        .catch(() => console.log('Public keepalive ping failed (sprite may be waking)'));
+    }
+
+    // Start public keepalive
+    initPublicKeepalive();
+
     // Configure marked
     marked.setOptions({
       highlight: (code, lang) => {

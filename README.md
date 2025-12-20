@@ -102,6 +102,22 @@ A separate WebSocket endpoint at `/ws/keepalive` keeps the Sprite awake while th
 
 Sessions can specify a working directory (`cwd`) that Claude Code operates in. This defaults to the user's home directory.
 
+### Keepalive Setup
+
+To prevent your Sprite from sleeping while the app is open, configure the public URL keepalive:
+
+1. Create a `.env` file with your Sprite's public URL:
+```bash
+echo 'SPRITE_PUBLIC_URL=https://your-sprite.sprites.app' > /home/sprite/sprite-mobile/.env
+```
+
+2. Restart the service to pick up the change:
+```bash
+curl-sprite-api -X POST /v1/services/signal -d '{"name": "sprite-mobile", "signal": "SIGTERM"}'
+```
+
+The client will now ping your Sprite's public URL every 30 seconds while the app is open, keeping it awake.
+
 ## Security Note
 
 This app runs Claude Code with `--dangerously-skip-permissions`, which allows Claude to execute commands without confirmation prompts. This is appropriate for a Sprite environment where the sandbox provides isolation, but be aware that Claude has full access to the Sprite's filesystem and can run arbitrary commands.
