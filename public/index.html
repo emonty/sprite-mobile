@@ -1321,7 +1321,7 @@
     function handleMessage(msg) {
       switch (msg.type) {
         case 'system':
-          if (!msg.message.includes('Connected')) {
+          if (msg.message && !msg.message.includes('Connected')) {
             addSystemMessage(msg.message);
           }
           break;
