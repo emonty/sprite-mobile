@@ -1277,7 +1277,19 @@
 
     // WebSocket
     function connectWs(sessionId) {
-      disconnectWs();
+      // Clear any pending reconnect
+      if (wsReconnectTimeout) {
+        clearTimeout(wsReconnectTimeout);
+        wsReconnectTimeout = null;
+      }
+      intentionalDisconnect = false;
+
+      if (ws) {
+        ws.close();
+        ws = null;
+      }
+      currentAssistantMessage = null;
+      assistantContent = '';
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${protocol}//${location.host}/ws?session=${sessionId}`);
@@ -1286,12 +1298,14 @@
         statusEl.textContent = 'Connected';
         statusEl.className = 'connected';
         sendBtn.disabled = false;
+        wsReconnectAttempts = 0; // Reset on successful connection
       };
 
       ws.onclose = () => {
         statusEl.textContent = 'Disconnected';
         statusEl.className = 'error';
         sendBtn.disabled = true;
+        scheduleReconnect();
       };
 
       ws.onerror = () => {
@@ -1309,13 +1323,41 @@
       };
     }
 
+    let wsReconnectTimeout = null;
+    let wsReconnectAttempts = 0;
+    let intentionalDisconnect = false;
+
     function disconnectWs() {
+      intentionalDisconnect = true;
+      if (wsReconnectTimeout) {
+        clearTimeout(wsReconnectTimeout);
+        wsReconnectTimeout = null;
+      }
       if (ws) {
         ws.close();
         ws = null;
       }
       currentAssistantMessage = null;
       assistantContent = '';
+      wsReconnectAttempts = 0;
+    }
+
+    function scheduleReconnect() {
+      if (intentionalDisconnect || !currentSession) return;
+
+      // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+      const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000);
+      wsReconnectAttempts++;
+
+      statusEl.textContent = `Reconnecting in ${Math.round(delay/1000)}s...`;
+      statusEl.className = 'error';
+
+      wsReconnectTimeout = setTimeout(() => {
+        if (currentSession && !intentionalDisconnect) {
+          statusEl.textContent = 'Reconnecting...';
+          connectWs(currentSession.id);
+        }
+      }, delay);
     }
 
     function handleMessage(msg) {
