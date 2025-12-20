@@ -1,6 +1,7 @@
 {
-  "name": "claude-mobile",
+  "name": "sprite-mobile",
   "version": "1.0.0",
+  "description": "Mobile-friendly web interface for chatting with Claude Code on a Sprite",
   "type": "module",
   "scripts": {
     "start": "bun run server.ts",

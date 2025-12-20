@@ -1,6 +1,15 @@
 # Sprite Mobile
 
-A mobile-friendly web interface for chatting with Claude Code. Supports multiple concurrent chat sessions, image uploads, and persistent message history.
+A mobile-friendly web interface for chatting with Claude Code running on a [Sprite](https://sprites.dev). Supports multiple concurrent chat sessions, image uploads, and persistent message history.
+
+## Prerequisites
+
+This app is designed to run on a Sprite from [sprites.dev](https://sprites.dev). Sprites come with:
+
+- **Bun** runtime pre-installed
+- **Claude Code** CLI pre-installed and authenticated
+
+If running elsewhere, you'll need to install these manually and authenticate Claude Code with `claude login`.
 
 ## Features
 
@@ -13,14 +22,17 @@ A mobile-friendly web interface for chatting with Claude Code. Supports multiple
 - **Auto-naming**: Chat sessions are automatically named based on the first message
 - **Sprite Profiles**: Save connections to other Sprite instances
 
-## Running
+## Quick Start
 
 ```bash
-cd /home/sprite/sprite-mobile
-bun run server.ts
+git clone <repo-url> sprite-mobile
+cd sprite-mobile
+bun start
 ```
 
 The server runs on port 8081 by default. Override with the `PORT` environment variable.
+
+Open `http://localhost:8081` in a browser to access the chat interface.
 
 ## Architecture
 
@@ -89,3 +101,11 @@ A separate WebSocket endpoint at `/ws/keepalive` keeps the Sprite awake while th
 ## Configuration
 
 Sessions can specify a working directory (`cwd`) that Claude Code operates in. This defaults to the user's home directory.
+
+## Security Note
+
+This app runs Claude Code with `--dangerously-skip-permissions`, which allows Claude to execute commands without confirmation prompts. This is appropriate for a Sprite environment where the sandbox provides isolation, but be aware that Claude has full access to the Sprite's filesystem and can run arbitrary commands.
+
+## iOS App
+
+The `ios/` directory contains a native iOS wrapper app that provides a more native mobile experience. See [ios/README.md](ios/README.md) for build instructions.
