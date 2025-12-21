@@ -24,14 +24,22 @@ const CDN_FILES = [
 // Install: cache shell files
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => {
-      // Cache shell files - don't fail install if some fail
-      return Promise.allSettled([
-        ...SHELL_FILES.map(url => cache.add(url).catch(() => console.log(`Failed to cache ${url}`))),
-        ...CDN_FILES.map(url => cache.add(url).catch(() => console.log(`Failed to cache CDN ${url}`))),
-      ]);
+    caches.open(SHELL_CACHE).then(async (cache) => {
+      // Cache shell files sequentially to ensure they complete
+      for (const url of SHELL_FILES) {
+        try {
+          await cache.add(url);
+          console.log(`Cached: ${url}`);
+        } catch (err) {
+          console.log(`Failed to cache ${url}:`, err);
+        }
+      }
+      // CDN files in parallel (less critical)
+      await Promise.allSettled(
+        CDN_FILES.map(url => cache.add(url).catch(() => console.log(`Failed to cache CDN ${url}`)))
+      );
     }).then(() => {
-      // Activate immediately
+      console.log('Shell cached, activating immediately');
       return self.skipWaiting();
     })
   );
@@ -52,16 +60,69 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Minimal offline fallback page - tries to wake sprite and reload
+const OFFLINE_HTML = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprite Code</title>
+<style>
+  body{margin:0;background:#1a1a1a;color:#e5e5e5;font-family:-apple-system,sans-serif;
+  display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column}
+  .spinner{width:40px;height:40px;border:3px solid #333;border-top-color:#d4a574;
+  border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #status{margin-bottom:8px}
+  #substatus{color:#888;font-size:14px}
+  button{margin-top:20px;padding:12px 24px;background:#d4a574;border:none;border-radius:8px;
+  color:#1a1a1a;font-size:16px;cursor:pointer}
+</style>
+</head><body>
+<div class="spinner"></div>
+<div id="status">Waking sprite...</div>
+<div id="substatus">This may take a moment</div>
+<button onclick="location.reload()">Retry Now</button>
+<script>
+(async function(){
+  const status = document.getElementById('status');
+  const substatus = document.getElementById('substatus');
+  // Try to get cached config from service worker
+  if(navigator.serviceWorker&&navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage({type:'GET_CACHED_CONFIG'});
+    navigator.serviceWorker.addEventListener('message',async(e)=>{
+      if(e.data?.type==='CACHED_CONFIG'&&e.data.config?.publicUrl){
+        substatus.textContent='Pinging '+e.data.config.publicUrl;
+        try{await fetch(e.data.config.publicUrl,{mode:'no-cors',cache:'no-store'})}catch(err){}
+        // Wait a bit then try reloading
+        for(let i=5;i>0;i--){
+          substatus.textContent='Retrying in '+i+'s...';
+          await new Promise(r=>setTimeout(r,1000));
+        }
+        location.reload();
+      }
+    });
+  }
+  // Fallback: just wait and retry
+  setTimeout(()=>location.reload(),10000);
+})();
+</script>
+</body></html>`;
+
 // Fetch handler with different strategies per resource type
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Navigation requests: serve cached shell immediately
+  // Navigation requests: serve cached shell, or offline fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.match('/index.html').then((cached) => {
-        // Return cached shell, or fetch if not cached
-        return cached || fetch(event.request);
+        if (cached) return cached;
+        // Try network, fall back to minimal offline page
+        return fetch(event.request).catch(() => {
+          return new Response(OFFLINE_HTML, {
+            headers: { 'Content-Type': 'text/html' }
+          });
+        });
       })
     );
     return;

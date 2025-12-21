@@ -56,6 +56,7 @@ interface SpriteProfile {
   name: string;
   address: string;
   port: number;
+  publicUrl?: string; // Public URL for waking sprite from suspension
   createdAt: number;
 }
 
@@ -445,11 +446,29 @@ function handleApi(req: Request, url: URL): Response | null {
         name: body.name,
         address: body.address,
         port: body.port || 8080,
+        publicUrl: body.publicUrl,
         createdAt: Date.now(),
       };
       sprites.push(newSprite);
       saveSprites(sprites);
       return Response.json(newSprite);
+    })();
+  }
+
+  // PATCH /api/sprites/:id - update sprite (including publicUrl)
+  if (req.method === "PATCH" && path.match(/^\/api\/sprites\/[^/]+$/)) {
+    return (async () => {
+      const id = path.split("/")[3];
+      const body = await req.json().catch(() => ({}));
+      const sprites = loadSprites();
+      const sprite = sprites.find(s => s.id === id);
+      if (!sprite) return new Response("Not found", { status: 404 });
+      if (body.name) sprite.name = body.name;
+      if (body.address) sprite.address = body.address;
+      if (body.port) sprite.port = body.port;
+      if (body.publicUrl !== undefined) sprite.publicUrl = body.publicUrl;
+      saveSprites(sprites);
+      return Response.json(sprite);
     })();
   }
 

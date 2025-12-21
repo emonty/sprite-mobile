@@ -943,6 +943,44 @@
       font-size: 14px;
       margin-top: 8px;
     }
+
+    /* Switching overlay - shown when switching to another sprite */
+    #switching-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+
+    #switching-overlay.visible {
+      display: flex;
+    }
+
+    .switching-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    .switching-text {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .switching-subtext {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -951,6 +989,13 @@
     <div class="waking-spinner"></div>
     <div class="waking-text">Waking sprite...</div>
     <div class="waking-subtext">This may take a few seconds</div>
+  </div>
+
+  <!-- Switching overlay - shown when switching to another sprite -->
+  <div id="switching-overlay">
+    <div class="switching-spinner"></div>
+    <div class="switching-text">Switching to sprite...</div>
+    <div class="switching-subtext">Waking up the target sprite</div>
   </div>
 
   <!-- Pull to refresh indicator -->
@@ -1103,6 +1148,7 @@
     const addSpriteBtn = document.getElementById('add-sprite-btn');
     const pullIndicator = document.getElementById('pull-indicator');
     const wakingOverlay = document.getElementById('waking-overlay');
+    const switchingOverlay = document.getElementById('switching-overlay');
 
     // State
     let sessions = [];
@@ -2002,6 +2048,29 @@
       return location.hostname;
     }
 
+    // Update the current sprite's publicUrl in the sprites list
+    async function updateCurrentSpritePublicUrl(publicUrl) {
+      if (!publicUrl) return;
+
+      const currentAddr = getCurrentSpriteAddress();
+      const sprite = sprites.find(s => s.address === currentAddr);
+
+      if (sprite && sprite.publicUrl !== publicUrl) {
+        // Update the sprite's publicUrl
+        try {
+          await fetch(`/api/sprites/${sprite.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicUrl }),
+          });
+          sprite.publicUrl = publicUrl;
+          console.log(`Updated sprite ${sprite.name} publicUrl to ${publicUrl}`);
+        } catch (err) {
+          console.log('Failed to update sprite publicUrl:', err);
+        }
+      }
+    }
+
     function renderSpritesList() {
       const currentAddr = getCurrentSpriteAddress();
 
@@ -2013,7 +2082,7 @@
       spritesList.innerHTML = sprites.map(s => {
         const isCurrent = s.address === currentAddr;
         return `
-          <div class="sprite-item ${isCurrent ? 'current' : ''}" data-id="${s.id}" data-address="${s.address}" data-port="${s.port}">
+          <div class="sprite-item ${isCurrent ? 'current' : ''}" data-id="${s.id}" data-address="${s.address}" data-port="${s.port}" data-publicurl="${escapeHtml(s.publicUrl || '')}">
             <div class="sprite-info">
               <div class="sprite-name">
                 ${escapeHtml(s.name)}
@@ -2031,7 +2100,8 @@
           if (e.target.classList.contains('sprite-delete')) return;
           const address = el.dataset.address;
           const port = el.dataset.port;
-          navigateToSprite(address, port);
+          const publicUrl = el.dataset.publicurl || '';
+          navigateToSprite(address, port, publicUrl);
         });
       });
     }
@@ -2063,10 +2133,65 @@
       loadSprites();
     }
 
-    function navigateToSprite(address, port) {
+    async function navigateToSprite(address, port, publicUrl) {
       const protocol = location.protocol;
-      const url = `${protocol}//${address}:${port}`;
-      window.location.href = url;
+      const targetUrl = `${protocol}//${address}:${port}`;
+
+      // If we have a publicUrl, try to wake the sprite first
+      if (publicUrl) {
+        // Show switching overlay
+        const switchingText = switchingOverlay.querySelector('.switching-text');
+        const switchingSubtext = switchingOverlay.querySelector('.switching-subtext');
+        if (switchingText) switchingText.textContent = 'Switching to sprite...';
+        if (switchingSubtext) switchingSubtext.textContent = 'Waking up the target sprite';
+        switchingOverlay.classList.add('visible');
+
+        // Close the sprites modal
+        closeSpritesModalFn();
+
+        // Ping the public URL to wake the sprite
+        console.log('Waking sprite via publicUrl:', publicUrl);
+        try {
+          await fetch(publicUrl, { mode: 'no-cors', cache: 'no-store' });
+        } catch (err) {
+          // Expected with no-cors
+        }
+
+        // Wait for sprite to respond (try pinging the direct address)
+        if (switchingSubtext) switchingSubtext.textContent = 'Waiting for sprite to respond...';
+
+        let spriteReady = false;
+        for (let i = 0; i < 15; i++) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            const res = await fetch(`${targetUrl}/api/config`, {
+              signal: controller.signal,
+              cache: 'no-store'
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+              spriteReady = true;
+              break;
+            }
+          } catch (err) {
+            // Keep trying
+          }
+          if (switchingSubtext) switchingSubtext.textContent = `Waiting for sprite... (${i + 1}/15)`;
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (spriteReady) {
+          if (switchingSubtext) switchingSubtext.textContent = 'Sprite ready, navigating...';
+        } else {
+          if (switchingSubtext) switchingSubtext.textContent = 'Navigating anyway...';
+        }
+
+        // Small delay for visual feedback
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      window.location.href = targetUrl;
     }
 
     // Make deleteSprite global for onclick
@@ -2194,6 +2319,12 @@
 
       // Start keepalive WebSocket now that sprite is awake
       connectKeepalive();
+
+      // Load sprites list and update current sprite's publicUrl
+      await loadSprites();
+      if (spritePublicUrl) {
+        await updateCurrentSpritePublicUrl(spritePublicUrl);
+      }
 
       // Now load sessions and restore state
       await loadSessions();
