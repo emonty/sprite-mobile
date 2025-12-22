@@ -18,11 +18,15 @@ If running elsewhere, you'll need to install these manually and authenticate Cla
 - **Multiple Chat Sessions**: Create and manage multiple independent chat sessions, each with its own Claude Code process
 - **Persistent History**: Messages are saved to disk and survive server restarts
 - **Session Resume**: Reconnecting to a session resumes the existing Claude conversation
-- **Image Support**: Upload and send images to Claude for analysis
+- **Image Support**: Upload and send images to Claude for analysis (auto-resized for API limits)
 - **Real-time Streaming**: Responses stream in real-time via WebSocket
 - **Multi-client Support**: Multiple browser tabs can connect to the same session
-- **Auto-naming**: Chat sessions are automatically named based on the first message
-- **Sprite Profiles**: Save connections to other Sprite instances
+- **Auto-naming**: Chat sessions are automatically named based on conversation content
+- **Auto Wake-up**: Automatically wakes suspended sprites via public URL
+- **PWA Support**: Installable as a Progressive Web App, works offline
+- **Tailscale Discovery**: iOS app auto-discovers sprites on your tailnet
+- **Auto-update**: Pulls latest code when the service starts
+- **Native iOS App**: SwiftUI wrapper for a better mobile experience
 
 ## Sprite Setup
 
