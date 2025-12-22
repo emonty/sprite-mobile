@@ -128,21 +128,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // /api/config: network-first, cache the result for offline wake-up
+  // /api/config: network-only for wake detection, cache via message handler
+  // Don't fall back to cache here - we need to know if sprite is actually awake
   if (url.pathname === '/api/config') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Clone and cache the response
+          // Clone and cache under canonical path (no query string) for offline page
           const clone = response.clone();
           caches.open(CONFIG_CACHE).then((cache) => {
-            cache.put(event.request, clone);
+            cache.put('/api/config', clone);
           });
           return response;
-        })
-        .catch(() => {
-          // Network failed, try cache
-          return caches.match(event.request);
         })
     );
     return;
