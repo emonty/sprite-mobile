@@ -26,11 +26,21 @@ If running elsewhere, you'll need to install these manually and authenticate Cla
 
 To set up a fresh Sprite with all dependencies, authentication, and services:
 
-```bash
-curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh | bash
-```
+1. First, get your Sprite's public URL (run this from your local machine):
+   ```bash
+   sprite url update --auth public -s YOUR_SPRITE_NAME
+   ```
 
-This script will configure hostname, git, Claude CLI, GitHub CLI, Fly.io, Tailscale, and start the required services.
+2. Then, on the Sprite, download and run the setup script:
+   ```bash
+   curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o sprite-setup.sh && chmod +x sprite-setup.sh && ./sprite-setup.sh
+   ```
+
+The script will prompt for the public URL and configure hostname, git, Claude CLI, GitHub CLI, Fly.io, Tailscale, and start the required services. The script is idempotent and can be safely re-run.
+
+**Note:** During authentication:
+- Claude CLI may start a new Claude session after completing. Just type `exit` or press `Ctrl+C` to exit and continue.
+- Sprites CLI will prompt you to create a new sprite. After creating it, exit the sprite console to continue with setup.
 
 ## Quick Start
 
@@ -125,7 +135,7 @@ echo 'SPRITE_PUBLIC_URL=https://your-sprite.sprites.app' > /home/sprite/sprite-m
 
 2. Restart the service to pick up the change:
 ```bash
-curl-sprite-api -X POST /v1/services/signal -d '{"name": "sprite-mobile", "signal": "SIGTERM"}'
+sprite-env curl -X POST /v1/services/signal -d '{"name": "sprite-mobile", "signal": "SIGTERM"}'
 ```
 
 The client will now ping your Sprite's public URL every 30 seconds while the app is open, keeping it awake.
