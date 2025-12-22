@@ -122,6 +122,20 @@ if [ -n "$SPRITE_PUBLIC_URL" ]; then
             echo "Hostname changed from '$CURRENT_HOSTNAME' to '$SUBDOMAIN'"
         fi
     fi
+
+    # Add to ~/.zshrc for CLI access
+    echo "Adding SPRITE_PUBLIC_URL to ~/.zshrc..."
+    if grep -q "^export SPRITE_PUBLIC_URL=" ~/.zshrc 2>/dev/null; then
+        sed -i "s|^export SPRITE_PUBLIC_URL=.*|export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL|" ~/.zshrc
+        echo "  Updated existing SPRITE_PUBLIC_URL in ~/.zshrc"
+    else
+        echo "" >> ~/.zshrc
+        echo "# Sprite public URL" >> ~/.zshrc
+        echo "export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL" >> ~/.zshrc
+        echo "  Added SPRITE_PUBLIC_URL to ~/.zshrc"
+    fi
+    # Source .zshrc to make it available in current session
+    source ~/.zshrc
 fi
 
 # Git user configuration
@@ -311,31 +325,14 @@ if [ -d "$SPRITE_MOBILE_DIR" ]; then
     git pull
 else
     echo "Cloning sprite-mobile..."
-    gh repo clone clouvet/sprite-mobile "$SPRITE_MOBILE_DIR"
+    gh repo clone "$SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_DIR"
 fi
 
-# Write SPRITE_PUBLIC_URL to ~/.zshrc and sprite-mobile/.env
+# Write SPRITE_PUBLIC_URL to sprite-mobile/.env
 if [ -n "$SPRITE_PUBLIC_URL" ]; then
-    # Add to ~/.zshrc for CLI access
-    echo "Adding SPRITE_PUBLIC_URL to ~/.zshrc..."
-    if grep -q "^export SPRITE_PUBLIC_URL=" ~/.zshrc 2>/dev/null; then
-        sed -i "s|^export SPRITE_PUBLIC_URL=.*|export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL|" ~/.zshrc
-        echo "  Updated existing SPRITE_PUBLIC_URL in ~/.zshrc"
-    else
-        echo "" >> ~/.zshrc
-        echo "# Sprite public URL" >> ~/.zshrc
-        echo "export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL" >> ~/.zshrc
-        echo "  Added SPRITE_PUBLIC_URL to ~/.zshrc"
-    fi
-    # Source .zshrc to make it available in current session
-    source ~/.zshrc
-
-    # Add to sprite-mobile/.env for the app
     echo "Writing SPRITE_PUBLIC_URL to sprite-mobile/.env..."
     echo "SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL" > "$SPRITE_MOBILE_DIR/.env"
     echo "  Created $SPRITE_MOBILE_DIR/.env"
-else
-    echo "No SPRITE_PUBLIC_URL set, skipping config updates"
 fi
 
 # Check if sprite-mobile service is running
