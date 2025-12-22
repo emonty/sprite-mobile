@@ -188,7 +188,7 @@ if claude auth status &>/dev/null; then
 else
     echo "Starting Claude CLI authentication..."
     echo "Follow the prompts to authenticate:"
-    claude auth login
+    claude
 fi
 
 # ============================================
