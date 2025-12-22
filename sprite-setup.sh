@@ -6,6 +6,15 @@ set -e
 # Run this once after creating a new sprite
 # ============================================
 
+# Detect which sprite API command is available
+if command -v sprite-env &>/dev/null; then
+    sprite_api() { sprite_api "$@"; }
+elif command -v curl-sprite-api &>/dev/null; then
+    sprite_api() { curl-sprite-api "$@"; }
+else
+    sprite_api() { echo "Warning: No sprite API command found" >&2; return 1; }
+fi
+
 # Configuration (set these or export before running)
 GIT_USER_NAME="${GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
@@ -134,8 +143,8 @@ if [ -n "$SPRITE_PUBLIC_URL" ]; then
         echo "export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL" >> ~/.zshrc
         echo "  Added SPRITE_PUBLIC_URL to ~/.zshrc"
     fi
-    # Source .zshrc to make it available in current session
-    source ~/.zshrc
+    # Export for current session
+    export SPRITE_PUBLIC_URL
 fi
 
 # Git user configuration
@@ -263,11 +272,11 @@ else
 fi
 
 # Check if tailscaled service is running
-if sprite-env curl /v1/services 2>/dev/null | grep -q '"tailscaled"'; then
+if sprite_api /v1/services 2>/dev/null | grep -q '"tailscaled"'; then
     echo "Tailscaled service already running"
 else
     echo "Starting tailscaled service..."
-    sprite-env curl -X PUT '/v1/services/tailscaled?duration=3s' -d '{
+    sprite_api -X PUT '/v1/services/tailscaled?duration=3s' -d '{
       "cmd": "tailscaled",
       "args": ["--state=/var/lib/tailscale/tailscaled.state", "--socket=/var/run/tailscale/tailscaled.sock"]
     }'
@@ -301,11 +310,11 @@ else
 fi
 
 # Check if ttyd service is running
-if sprite-env curl /v1/services 2>/dev/null | grep -q '"ttyd"'; then
+if sprite_api /v1/services 2>/dev/null | grep -q '"ttyd"'; then
     echo "ttyd service already running"
 else
     echo "Starting ttyd service on port $TTYD_PORT..."
-    sprite-env curl -X PUT '/v1/services/ttyd?duration=3s' -d "{
+    sprite_api -X PUT '/v1/services/ttyd?duration=3s' -d "{
       \"cmd\": \"ttyd\",
       \"args\": [\"-W\", \"-p\", \"$TTYD_PORT\", \"-t\", \"fontSize=28\", \"zsh\"]
     }"
@@ -336,11 +345,11 @@ if [ -n "$SPRITE_PUBLIC_URL" ]; then
 fi
 
 # Check if sprite-mobile service is running
-if sprite-env curl /v1/services 2>/dev/null | grep -q '"sprite-mobile"'; then
+if sprite_api /v1/services 2>/dev/null | grep -q '"sprite-mobile"'; then
     echo "sprite-mobile service already running"
 else
     echo "Starting sprite-mobile service on port $APP_PORT..."
-    sprite-env curl -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
+    sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
       \"cmd\": \"bun\",
       \"args\": [\"run\", \"$SPRITE_MOBILE_DIR/server.ts\"]
     }"
@@ -376,11 +385,11 @@ WAKEUP_EOF
 fi
 
 # Check if wake-up service is running
-if sprite-env curl /v1/services 2>/dev/null | grep -q '"wake-up"'; then
+if sprite_api /v1/services 2>/dev/null | grep -q '"wake-up"'; then
     echo "wake-up service already running"
 else
     echo "Starting wake-up service on port $WAKEUP_PORT..."
-    sprite-env curl -X PUT '/v1/services/wake-up?duration=3s' -d "{
+    sprite_api -X PUT '/v1/services/wake-up?duration=3s' -d "{
       \"cmd\": \"bun\",
       \"args\": [\"run\", \"$WAKEUP_DIR/server.ts\"]
     }"
@@ -398,7 +407,6 @@ echo "Services running:"
 echo "  - wake-up (public):    Port $WAKEUP_PORT - hit this to wake sprite"
 echo "  - sprite-mobile:       http://$TAILSCALE_IP:$APP_PORT (Tailscale)"
 echo "  - ttyd (web terminal): http://$TAILSCALE_IP:$TTYD_PORT (Tailscale)"
-echo "  - spinner:             keeps sprite active"
 echo ""
 if [ -n "$SPRITE_PUBLIC_URL" ]; then
     echo "Public URL: $SPRITE_PUBLIC_URL"
@@ -409,7 +417,7 @@ fi
 echo "Then access services via Tailscale."
 echo ""
 echo "To check service status:"
-echo "  sprite-env curl /v1/services"
+echo "  sprite_api /v1/services"
 echo ""
 echo "NOTE: Log out and back in for SPRITE_PUBLIC_URL to be available in new sessions."
 echo ""
