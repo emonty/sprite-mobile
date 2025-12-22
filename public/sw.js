@@ -1,7 +1,7 @@
 // Service Worker for Sprite Code PWA
 // Caches shell for offline-first loading and stores public URL for sprite wake-up
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 const CONFIG_CACHE = `config-${CACHE_VERSION}`;
 
@@ -65,15 +65,17 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sprite Code</title>
+<title>Sprite Code - Offline</title>
 <style>
   body{margin:0;background:#1a1a1a;color:#e5e5e5;font-family:-apple-system,sans-serif;
-  display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column}
+  display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;padding:20px;box-sizing:border-box}
   .spinner{width:40px;height:40px;border:3px solid #333;border-top-color:#d4a574;
   border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  #status{margin-bottom:8px}
-  #substatus{color:#888;font-size:14px}
+  #status{margin-bottom:8px;font-size:18px}
+  #substatus{color:#888;font-size:14px;margin-bottom:12px}
+  #log{color:#666;font-size:12px;font-family:monospace;max-height:150px;overflow-y:auto;text-align:left;width:100%;max-width:300px}
+  .log-entry{margin:4px 0}
   button{margin-top:20px;padding:12px 24px;background:#d4a574;border:none;border-radius:8px;
   color:#1a1a1a;font-size:16px;cursor:pointer}
 </style>
@@ -81,29 +83,65 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 <div class="spinner"></div>
 <div id="status">Waking sprite...</div>
 <div id="substatus">This may take a moment</div>
+<div id="log"></div>
 <button onclick="location.reload()">Retry Now</button>
 <script>
 (async function(){
   const status = document.getElementById('status');
   const substatus = document.getElementById('substatus');
+  const log = document.getElementById('log');
+
+  function addLog(msg) {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  addLog('Offline page loaded');
+  addLog('SW controller: ' + (navigator.serviceWorker?.controller ? 'yes' : 'no'));
+
   // Try to get cached config from service worker
   if(navigator.serviceWorker&&navigator.serviceWorker.controller){
+    addLog('Requesting cached config...');
     navigator.serviceWorker.controller.postMessage({type:'GET_CACHED_CONFIG'});
     navigator.serviceWorker.addEventListener('message',async(e)=>{
-      if(e.data?.type==='CACHED_CONFIG'&&e.data.config?.publicUrl){
-        substatus.textContent='Pinging '+e.data.config.publicUrl;
-        try{await fetch(e.data.config.publicUrl,{mode:'no-cors',cache:'no-store'})}catch(err){}
-        // Wait a bit then try reloading
-        for(let i=5;i>0;i--){
-          substatus.textContent='Retrying in '+i+'s...';
-          await new Promise(r=>setTimeout(r,1000));
+      addLog('SW message: ' + e.data?.type);
+      if(e.data?.type==='CACHED_CONFIG'){
+        if(e.data.config?.publicUrl){
+          const url = e.data.config.publicUrl;
+          addLog('Got publicUrl: ' + url);
+          substatus.textContent='Pinging ' + url;
+          try{
+            await fetch(url,{mode:'no-cors',cache:'no-store'});
+            addLog('Ping sent');
+          }catch(err){
+            addLog('Ping error: ' + err.message);
+          }
+          // Wait a bit then try reloading
+          for(let i=5;i>0;i--){
+            substatus.textContent='Retrying in '+i+'s...';
+            addLog('Retry in ' + i + 's');
+            await new Promise(r=>setTimeout(r,1000));
+          }
+          addLog('Reloading...');
+          location.reload();
+        } else {
+          addLog('No publicUrl in config');
+          substatus.textContent='No wake URL cached';
         }
-        location.reload();
       }
     });
+  } else {
+    addLog('No SW controller - cannot wake');
+    substatus.textContent='Service worker not active';
   }
   // Fallback: just wait and retry
-  setTimeout(()=>location.reload(),10000);
+  setTimeout(()=>{
+    addLog('Fallback reload');
+    location.reload();
+  },15000);
 })();
 </script>
 </body></html>`;

@@ -945,6 +945,22 @@
       margin-top: 8px;
     }
 
+    #waking-log {
+      margin-top: 16px;
+      color: #666;
+      font-size: 11px;
+      font-family: monospace;
+      max-height: 120px;
+      overflow-y: auto;
+      text-align: left;
+      width: 100%;
+      max-width: 280px;
+    }
+
+    .wlog-entry {
+      margin: 3px 0;
+    }
+
     /* Switching overlay - shown when switching to another sprite */
     #switching-overlay {
       position: fixed;
@@ -990,6 +1006,7 @@
     <div class="waking-spinner"></div>
     <div class="waking-text">Waking sprite...</div>
     <div class="waking-subtext">This may take a few seconds</div>
+    <div id="waking-log"></div>
   </div>
 
   <!-- Switching overlay - shown when switching to another sprite -->
@@ -1228,6 +1245,19 @@
       setTimeout(() => wakingOverlay.classList.add('removed'), 300);
     }
 
+    // Log to the waking overlay for debugging
+    const wakingLog = document.getElementById('waking-log');
+    function wakeLog(msg) {
+      console.log('[wake]', msg);
+      if (wakingLog) {
+        const entry = document.createElement('div');
+        entry.className = 'wlog-entry';
+        entry.textContent = msg;
+        wakingLog.appendChild(entry);
+        wakingLog.scrollTop = wakingLog.scrollHeight;
+      }
+    }
+
     // Try to fetch config from sprite, with retries
     async function fetchConfigWithRetry(maxRetries = 10, delay = 1000) {
       for (let i = 0; i < maxRetries; i++) {
@@ -1254,45 +1284,55 @@
 
     // Wake up sprite using cached or fresh public URL
     async function wakeUpSprite() {
+      wakeLog('Starting wake-up...');
+      wakeLog('SW controller: ' + (navigator.serviceWorker?.controller ? 'yes' : 'no'));
+
       // First, try to get cached config from service worker
       const cachedConfig = await getCachedConfig();
+      wakeLog('Cached config: ' + (cachedConfig ? JSON.stringify(cachedConfig) : 'none'));
 
       if (cachedConfig?.publicUrl) {
         spritePublicUrl = cachedConfig.publicUrl;
-        console.log('Using cached public URL to wake sprite:', spritePublicUrl);
+        wakeLog('Pinging: ' + spritePublicUrl);
 
         // Ping the public URL to wake the sprite
         try {
           await fetch(spritePublicUrl, { mode: 'no-cors', cache: 'no-store' });
-          console.log('Wake-up ping sent');
+          wakeLog('Ping sent OK');
         } catch (err) {
-          console.log('Wake-up ping sent (no-cors mode)');
+          wakeLog('Ping error: ' + err.message);
         }
 
         // Wait for sprite to actually respond
+        wakeLog('Waiting for sprite...');
         const config = await fetchConfigWithRetry();
         if (config) {
+          wakeLog('Sprite responded!');
           spritePublicUrl = config.publicUrl;
           cacheConfig(config);
           startPublicKeepalive();
           return true;
         }
+        wakeLog('Sprite did not respond');
       }
 
       // No cached config or wake failed - try fetching directly
       // (sprite might already be awake)
+      wakeLog('Trying direct connection...');
       try {
         const config = await fetchConfigWithRetry(3, 500);
         if (config?.publicUrl) {
+          wakeLog('Direct connection OK');
           spritePublicUrl = config.publicUrl;
           cacheConfig(config);
           startPublicKeepalive();
           return true;
         }
       } catch (err) {
-        console.log('Could not reach sprite');
+        wakeLog('Direct failed: ' + err.message);
       }
 
+      wakeLog('Could not reach sprite');
       return false;
     }
 
