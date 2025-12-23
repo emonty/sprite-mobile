@@ -38,7 +38,8 @@ echo "  6. Install and authenticate Sprites CLI"
 echo "  7. Install and configure Tailscale"
 echo "  8. Install ttyd (web terminal) on port $TTYD_PORT"
 echo "  9. Clone sprite-mobile and run on port $APP_PORT"
-echo "  10. Start wake-up server on port $WAKEUP_PORT (public, wakes sprite)"
+echo "  10. Set up Tailscale Serve (HTTPS for PWA support)"
+echo "  11. Start wake-up server on port $WAKEUP_PORT (public, wakes sprite)"
 echo ""
 echo "Press Enter to continue or Ctrl+C to abort..."
 read
@@ -356,10 +357,48 @@ else
 fi
 
 # ============================================
-# Step 10: Wake-Up Server
+# Step 10: Tailscale Serve (HTTPS for PWA)
 # ============================================
 echo ""
-echo "=== Step 10: Wake-Up Server ==="
+echo "=== Step 10: Tailscale Serve ==="
+echo "Exposing sprite-mobile via HTTPS on your tailnet (enables PWA/service worker)"
+
+# Check if already serving
+if tailscale serve status 2>/dev/null | grep -q ":$APP_PORT"; then
+    echo "Tailscale serve already configured for port $APP_PORT"
+else
+    echo "Setting up Tailscale serve for sprite-mobile..."
+    tailscale serve --bg $APP_PORT
+fi
+
+# Get the Tailscale serve URL
+TAILSCALE_HOSTNAME=$(tailscale status --json | grep -o '"Self":{[^}]*"HostName":"[^"]*"' | sed 's/.*"HostName":"\([^"]*\)".*/\1/')
+TAILNET_NAME=$(tailscale status --json | grep -o '"MagicDNSSuffix":"[^"]*"' | sed 's/.*"MagicDNSSuffix":"\([^"]*\)".*/\1/')
+if [ -n "$TAILSCALE_HOSTNAME" ] && [ -n "$TAILNET_NAME" ]; then
+    TAILSCALE_SERVE_URL="https://${TAILSCALE_HOSTNAME}.${TAILNET_NAME}"
+    echo "Tailscale HTTPS URL: $TAILSCALE_SERVE_URL"
+
+    # Add to sprite-mobile .env
+    if [ -f "$SPRITE_MOBILE_DIR/.env" ]; then
+        if grep -q "^TAILSCALE_SERVE_URL=" "$SPRITE_MOBILE_DIR/.env"; then
+            sed -i "s|^TAILSCALE_SERVE_URL=.*|TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL|" "$SPRITE_MOBILE_DIR/.env"
+        else
+            echo "TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL" >> "$SPRITE_MOBILE_DIR/.env"
+        fi
+    else
+        echo "TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL" > "$SPRITE_MOBILE_DIR/.env"
+    fi
+    echo "  Added TAILSCALE_SERVE_URL to $SPRITE_MOBILE_DIR/.env"
+else
+    TAILSCALE_SERVE_URL=""
+    echo "Could not determine Tailscale serve URL (check 'tailscale serve status')"
+fi
+
+# ============================================
+# Step 11: Wake-Up Server
+# ============================================
+echo ""
+echo "=== Step 11: Wake-Up Server ==="
 echo "Public endpoint on port $WAKEUP_PORT to wake sprite from suspension"
 
 WAKEUP_DIR="$HOME/.wake-up-server"
@@ -405,16 +444,21 @@ echo "============================================"
 echo ""
 echo "Services running:"
 echo "  - wake-up (public):    Port $WAKEUP_PORT - hit this to wake sprite"
-echo "  - sprite-mobile:       http://$TAILSCALE_IP:$APP_PORT (Tailscale)"
-echo "  - ttyd (web terminal): http://$TAILSCALE_IP:$TTYD_PORT (Tailscale)"
+echo "  - sprite-mobile:       http://$TAILSCALE_IP:$APP_PORT (Tailscale HTTP)"
+echo "  - ttyd (web terminal): http://$TAILSCALE_IP:$TTYD_PORT (Tailscale HTTP)"
 echo ""
+if [ -n "$TAILSCALE_SERVE_URL" ]; then
+    echo "Tailscale HTTPS (PWA-ready):"
+    echo "  - sprite-mobile:       $TAILSCALE_SERVE_URL"
+    echo ""
+fi
 if [ -n "$SPRITE_PUBLIC_URL" ]; then
     echo "Public URL: $SPRITE_PUBLIC_URL"
     echo "To wake sprite from suspension, hit: $SPRITE_PUBLIC_URL"
 else
     echo "To wake sprite from suspension, hit the public URL on port $WAKEUP_PORT."
 fi
-echo "Then access services via Tailscale."
+echo "Then access services via Tailscale (use HTTPS URL for PWA/offline support)."
 echo ""
 echo "To check service status:"
 echo "  sprite_api /v1/services"
