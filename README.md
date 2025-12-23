@@ -22,11 +22,37 @@ If running elsewhere, you'll need to install these manually and authenticate Cla
 - **Real-time Streaming**: Responses stream in real-time via WebSocket
 - **Multi-client Support**: Multiple browser tabs can connect to the same session
 - **Auto-naming**: Chat sessions are automatically named based on conversation content
-- **Auto Wake-up**: Automatically wakes suspended sprites via public URL
-- **PWA Support**: Installable as a Progressive Web App, works offline
-- **Tailscale Discovery**: iOS app auto-discovers sprites on your tailnet
+- **Dynamic Branding**: Header displays the sprite's hostname with a neon green 👾
+- **Tailscale Integration**: HTTPS access via Tailscale Serve with automatic redirect from public URL
+- **Tailnet Gate**: Public URL wakes sprite and redirects to Tailscale URL (if on tailnet)
+- **PWA Support**: Installable as a Progressive Web App, works offline (requires HTTPS via Tailscale Serve)
 - **Auto-update**: Pulls latest code when the service starts
 - **Native iOS App**: SwiftUI wrapper for a better mobile experience
+
+## Access Model
+
+Sprite Mobile uses Tailscale for secure access without passwords or tokens:
+
+```
+Public URL (https://sprite.fly.dev)
+         │
+         ▼
+   Tailnet Gate (port 8080)
+         │
+         ├── On tailnet? ──→ Redirect to Tailscale HTTPS URL
+         │
+         └── Not on tailnet? ──→ Show "Unauthorized" 👾 🚫
+```
+
+**Three access paths:**
+
+| Path | URL | Auth | HTTPS | PWA |
+|------|-----|------|-------|-----|
+| Public | `https://sprite.fly.dev` | Tailnet Gate | Yes | Redirects |
+| Tailscale Serve | `https://sprite.ts.net` | Tailnet only | Yes | Yes |
+| Tailscale IP | `http://100.x.x.x:8081` | Tailnet only | No | No |
+
+**Recommended**: Bookmark the public URL. It wakes the sprite and auto-redirects to the Tailscale HTTPS URL when you're on the tailnet.
 
 ## Sprite Setup
 
@@ -42,7 +68,16 @@ To set up a fresh Sprite with all dependencies, authentication, and services:
    curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o sprite-setup.sh && chmod +x sprite-setup.sh && ./sprite-setup.sh
    ```
 
-The script will prompt for the public URL and configure hostname, git, Claude CLI, GitHub CLI, Fly.io, Tailscale, and start the required services. The script is idempotent and can be safely re-run. It supports both old (`curl-sprite-api`) and new (`sprite-env`) sprite API commands.
+The script will:
+1. Configure hostname and git user
+2. Authenticate Claude CLI, GitHub CLI, Fly.io CLI, Sprites CLI
+3. Install and configure Tailscale
+4. Install ttyd (web terminal)
+5. Clone and run sprite-mobile
+6. Set up Tailscale Serve (HTTPS for PWA support)
+7. Start the Tailnet Gate (public entry point)
+
+The script is idempotent and can be safely re-run. It supports both old (`curl-sprite-api`) and new (`sprite-env`) sprite API commands.
 
 The app is installed to `~/.sprite-mobile` (hidden directory). On each service start, it attempts to auto-update via `git pull` so all sprites receive updates when they wake up.
 
@@ -64,7 +99,28 @@ The server runs on port 8081 by default. Override with the `PORT` environment va
 
 Open `http://localhost:8081` in a browser to access the chat interface.
 
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PORT` | Server port | `8081` |
+| `SPRITE_PUBLIC_URL` | Public URL for waking sprite | `https://my-sprite.fly.dev` |
+| `TAILSCALE_SERVE_URL` | Tailscale HTTPS URL | `https://my-sprite.ts.net` |
+
+These are automatically configured by the setup script.
+
 ## Architecture
+
+### Services
+
+After setup, these services run on your sprite:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `tailnet-gate` | 8080 | Public entry point, redirects to Tailscale URL |
+| `sprite-mobile` | 8081 | Main app server |
+| `ttyd` | 8181 | Web terminal |
+| `tailscaled` | - | Tailscale daemon |
 
 ### Data Storage
 
@@ -79,6 +135,7 @@ All data is stored in the `data/` directory:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/api/config` | Get public configuration |
 | GET | `/api/sessions` | List all sessions |
 | POST | `/api/sessions` | Create new session |
 | PATCH | `/api/sessions/:id` | Update session name/cwd |
@@ -132,28 +189,41 @@ A separate WebSocket endpoint at `/ws/keepalive` keeps the Sprite awake while th
 
 Sessions can specify a working directory (`cwd`) that Claude Code operates in. This defaults to the user's home directory.
 
-### Keepalive Setup
+## Security
 
-To prevent your Sprite from sleeping while the app is open, configure the public URL keepalive:
+### Access Control
 
-1. Create a `.env` file with your Sprite's public URL:
-```bash
-echo 'SPRITE_PUBLIC_URL=https://your-sprite.sprites.app' > /home/sprite/.sprite-mobile/.env
-```
+Access is controlled via Tailscale:
+- **Tailnet membership is the auth** - No passwords or tokens needed
+- **Public URL only redirects** - The tailnet gate checks if you can reach the Tailscale URL before redirecting
+- **Not on tailnet = Unauthorized** - Users outside your tailnet see a blocked page
 
-2. Restart the service to pick up the change:
-```bash
-# New sprites:
-sprite-env curl -X POST /v1/services/signal -d '{"name": "sprite-mobile", "signal": "SIGTERM"}'
-# Older sprites:
-curl-sprite-api -X POST /v1/services/signal -d '{"name": "sprite-mobile", "signal": "SIGTERM"}'
-```
-
-The client will now ping your Sprite's public URL every 30 seconds while the app is open, keeping it awake.
-
-## Security Note
+### Claude Code Permissions
 
 This app runs Claude Code with `--dangerously-skip-permissions`, which allows Claude to execute commands without confirmation prompts. This is appropriate for a Sprite environment where the sandbox provides isolation, but be aware that Claude has full access to the Sprite's filesystem and can run arbitrary commands.
+
+## Troubleshooting
+
+### Chrome Certificate Error
+
+If Chrome shows `ERR_CERTIFICATE_TRANSPARENCY_REQUIRED` when accessing the Tailscale URL:
+- Wait a few minutes for certificate propagation
+- Try hard refresh (Cmd+Shift+R)
+- Clear site data in DevTools
+- Try incognito mode
+- Safari is more lenient and may work immediately
+
+### Tailscale Serve Not Working
+
+Check the serve status:
+```bash
+tailscale serve status
+```
+
+Restart if needed:
+```bash
+tailscale serve --bg 8081
+```
 
 ## iOS App
 
