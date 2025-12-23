@@ -998,6 +998,10 @@
       font-size: 14px;
       margin-top: 8px;
     }
+
+    .sprite-emoji {
+      filter: sepia(1) saturate(5) hue-rotate(70deg) brightness(1.1);
+    }
   </style>
 </head>
 <body>
@@ -1228,14 +1232,16 @@
     // Update displayed sprite name
     function updateSpriteName(name) {
       spriteName = name || 'Sprite Code';
+      const emojiHtml = '<span class="sprite-emoji">👾</span>';
+      const displayHtml = `${escapeHtml(spriteName)} ${emojiHtml}`;
       // Update header title if showing empty state
       if (emptyState.style.display !== 'none') {
-        chatTitle.textContent = spriteName;
+        chatTitle.innerHTML = displayHtml;
       }
       // Update welcome message
       const welcomeH2 = emptyState.querySelector('h2');
       if (welcomeH2) {
-        welcomeH2.textContent = `Welcome to ${spriteName}`;
+        welcomeH2.innerHTML = `Welcome to ${displayHtml}`;
       }
       // Update page title
       document.title = spriteName;
@@ -1528,7 +1534,8 @@
     }
 
     function showEmptyState() {
-      chatTitle.textContent = spriteName;
+      const emojiHtml = '<span class="sprite-emoji">👾</span>';
+      chatTitle.innerHTML = `${escapeHtml(spriteName)} ${emojiHtml}`;
       emptyState.style.display = 'flex';
       messagesEl.classList.remove('active');
       inputArea.classList.remove('active');
