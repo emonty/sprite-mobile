@@ -559,15 +559,39 @@ function handleApi(req: Request, url: URL): Response | null {
   return null;
 }
 
+// CORS headers for cross-origin requests (needed for tailnet gate)
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function addCorsHeaders(response: Response): Response {
+  const newHeaders = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    newHeaders.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}
+
 const server = Bun.serve({
   port: PORT,
 
   fetch(req, server) {
     const url = new URL(req.url);
 
+    // Handle CORS preflight
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
+
     if (url.pathname.startsWith("/api/")) {
       const response = handleApi(req, url);
-      if (response) return response;
+      if (response) return addCorsHeaders(response);
     }
 
     // Keepalive WebSocket - keeps sprite awake while app is open

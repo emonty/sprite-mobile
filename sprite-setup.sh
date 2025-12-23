@@ -513,8 +513,8 @@ const server = Bun.serve({
   },
 });
 
-console.log(\\\`Tailnet gate running on http://localhost:\\\${PORT}\\\`);
-console.log(\\\`Redirects to: \\\${TAILSCALE_URL || '(not configured)'}\\\`);
+console.log("Tailnet gate running on http://localhost:" + PORT);
+console.log("Redirects to: " + (TAILSCALE_URL || "(not configured)"));
 GATE_EOF
 
 # Check if gate service is running
