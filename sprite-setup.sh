@@ -8,7 +8,7 @@ set -e
 
 # Detect which sprite API command is available
 if command -v sprite-env &>/dev/null; then
-    sprite_api() { sprite_api "$@"; }
+    sprite_api() { sprite-env curl "$@"; }
 elif command -v curl-sprite-api &>/dev/null; then
     sprite_api() { curl-sprite-api "$@"; }
 else
@@ -371,11 +371,9 @@ else
     tailscale serve --bg $APP_PORT
 fi
 
-# Get the Tailscale serve URL
-TAILSCALE_HOSTNAME=$(tailscale status --json | grep -o '"Self":{[^}]*"HostName":"[^"]*"' | sed 's/.*"HostName":"\([^"]*\)".*/\1/')
-TAILNET_NAME=$(tailscale status --json | grep -o '"MagicDNSSuffix":"[^"]*"' | sed 's/.*"MagicDNSSuffix":"\([^"]*\)".*/\1/')
-if [ -n "$TAILSCALE_HOSTNAME" ] && [ -n "$TAILNET_NAME" ]; then
-    TAILSCALE_SERVE_URL="https://${TAILSCALE_HOSTNAME}.${TAILNET_NAME}"
+# Get the Tailscale serve URL from serve status output
+TAILSCALE_SERVE_URL=$(tailscale serve status 2>/dev/null | grep -oE 'https://[^ ]+' | head -1)
+if [ -n "$TAILSCALE_SERVE_URL" ]; then
     echo "Tailscale HTTPS URL: $TAILSCALE_SERVE_URL"
 
     # Add to sprite-mobile .env
