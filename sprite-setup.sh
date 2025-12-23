@@ -39,7 +39,7 @@ echo "  7. Install and configure Tailscale"
 echo "  8. Install ttyd (web terminal) on port $TTYD_PORT"
 echo "  9. Clone sprite-mobile and run on port $APP_PORT"
 echo "  10. Set up Tailscale Serve (HTTPS for PWA support)"
-echo "  11. Start wake-up server on port $WAKEUP_PORT (public, wakes sprite)"
+echo "  11. Start tailnet gate on port $WAKEUP_PORT (public entry point)"
 echo ""
 echo "Press Enter to continue or Ctrl+C to abort..."
 read
@@ -381,6 +381,19 @@ TAILSCALE_SERVE_URL=$(tailscale serve status 2>/dev/null | grep -oE 'https://[^ 
 if [ -n "$TAILSCALE_SERVE_URL" ]; then
     echo "Tailscale HTTPS URL: $TAILSCALE_SERVE_URL"
 
+    # Add to ~/.zshrc for CLI access
+    if grep -q "^export TAILSCALE_SERVE_URL=" ~/.zshrc 2>/dev/null; then
+        sed -i "s|^export TAILSCALE_SERVE_URL=.*|export TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL|" ~/.zshrc
+        echo "  Updated TAILSCALE_SERVE_URL in ~/.zshrc"
+    else
+        echo "" >> ~/.zshrc
+        echo "# Tailscale serve URL (HTTPS)" >> ~/.zshrc
+        echo "export TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL" >> ~/.zshrc
+        echo "  Added TAILSCALE_SERVE_URL to ~/.zshrc"
+    fi
+    # Export for current session
+    export TAILSCALE_SERVE_URL
+
     # Add to sprite-mobile .env
     if [ -f "$SPRITE_MOBILE_DIR/.env" ]; then
         if grep -q "^TAILSCALE_SERVE_URL=" "$SPRITE_MOBILE_DIR/.env"; then
@@ -398,44 +411,124 @@ else
 fi
 
 # ============================================
-# Step 11: Wake-Up Server
+# Step 11: Tailnet Gate (Public Entry Point)
 # ============================================
 echo ""
-echo "=== Step 11: Wake-Up Server ==="
-echo "Public endpoint on port $WAKEUP_PORT to wake sprite from suspension"
+echo "=== Step 11: Tailnet Gate ==="
+echo "Public endpoint that redirects to Tailscale URL if on tailnet"
 
-WAKEUP_DIR="$HOME/.wake-up-server"
+GATE_DIR="$HOME/.tailnet-gate"
 
-# Create wake-up server if it doesn't exist
-if [ ! -d "$WAKEUP_DIR" ]; then
-    echo "Creating wake-up server..."
-    mkdir -p "$WAKEUP_DIR"
-    cat > "$WAKEUP_DIR/server.ts" << 'WAKEUP_EOF'
+# Always recreate the gate server (in case TAILSCALE_SERVE_URL changed)
+echo "Creating tailnet gate server..."
+mkdir -p "$GATE_DIR"
+cat > "$GATE_DIR/server.ts" << GATE_EOF
 const PORT = 8080;
+const TAILSCALE_URL = "${TAILSCALE_SERVE_URL}";
+
+const html = \`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connecting...</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .emoji {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      filter: sepia(1) saturate(5) hue-rotate(70deg) brightness(1.1);
+    }
+    .blocked { display: none; }
+    .blocked .emoji { filter: none; }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #333;
+      border-top-color: #39ff14;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 1rem auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container" id="loading">
+    <div class="emoji">👾</div>
+    <h1>Connecting...</h1>
+    <div class="spinner"></div>
+  </div>
+  <div class="container blocked" id="blocked">
+    <div class="emoji">👾 🚫</div>
+    <h1>Unauthorized</h1>
+  </div>
+  <script>
+    const tailscaleUrl = "\${TAILSCALE_URL}";
+
+    if (!tailscaleUrl) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('blocked').style.display = 'block';
+    } else {
+      fetch(tailscaleUrl + '/api/config', {
+        mode: 'cors',
+        signal: AbortSignal.timeout(5000)
+      })
+      .then(r => {
+        if (r.ok) window.location.href = tailscaleUrl;
+        else throw new Error('not ok');
+      })
+      .catch(() => {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('blocked').style.display = 'block';
+      });
+    }
+  </script>
+</body>
+</html>\`;
 
 const server = Bun.serve({
   port: PORT,
   fetch() {
-    return new Response("ok", {
-      headers: { "Content-Type": "text/plain" },
+    return new Response(html, {
+      headers: { "Content-Type": "text/html" },
     });
   },
 });
 
-console.log(`Wake-up server running on http://localhost:${PORT}`);
-WAKEUP_EOF
+console.log(\\\`Tailnet gate running on http://localhost:\\\${PORT}\\\`);
+console.log(\\\`Redirects to: \\\${TAILSCALE_URL || '(not configured)'}\\\`);
+GATE_EOF
+
+# Check if gate service is running
+if sprite_api /v1/services 2>/dev/null | grep -q '"tailnet-gate"'; then
+    echo "Restarting tailnet-gate service..."
+    sprite_api -X DELETE '/v1/services/tailnet-gate' 2>/dev/null || true
+    sleep 1
 fi
 
-# Check if wake-up service is running
-if sprite_api /v1/services 2>/dev/null | grep -q '"wake-up"'; then
-    echo "wake-up service already running"
-else
-    echo "Starting wake-up service on port $WAKEUP_PORT..."
-    sprite_api -X PUT '/v1/services/wake-up?duration=3s' -d "{
-      \"cmd\": \"bun\",
-      \"args\": [\"run\", \"$WAKEUP_DIR/server.ts\"]
-    }"
-fi
+echo "Starting tailnet-gate service on port $WAKEUP_PORT..."
+sprite_api -X PUT '/v1/services/tailnet-gate?duration=3s' -d "{
+  \"cmd\": \"bun\",
+  \"args\": [\"run\", \"$GATE_DIR/server.ts\"]
+}"
 
 # ============================================
 # Setup Complete
@@ -446,25 +539,23 @@ echo "Setup Complete!"
 echo "============================================"
 echo ""
 echo "Services running:"
-echo "  - wake-up (public):    Port $WAKEUP_PORT - hit this to wake sprite"
-echo "  - sprite-mobile:       http://$TAILSCALE_IP:$APP_PORT (Tailscale HTTP)"
-echo "  - ttyd (web terminal): http://$TAILSCALE_IP:$TTYD_PORT (Tailscale HTTP)"
+echo "  - tailnet-gate (public): Port $WAKEUP_PORT - redirects to Tailscale URL"
+echo "  - sprite-mobile:         http://$TAILSCALE_IP:$APP_PORT (Tailscale HTTP)"
+echo "  - ttyd (web terminal):   http://$TAILSCALE_IP:$TTYD_PORT (Tailscale HTTP)"
 echo ""
 if [ -n "$TAILSCALE_SERVE_URL" ]; then
     echo "Tailscale HTTPS (PWA-ready):"
-    echo "  - sprite-mobile:       $TAILSCALE_SERVE_URL"
+    echo "  - sprite-mobile: $TAILSCALE_SERVE_URL"
     echo ""
 fi
 if [ -n "$SPRITE_PUBLIC_URL" ]; then
     echo "Public URL: $SPRITE_PUBLIC_URL"
-    echo "To wake sprite from suspension, hit: $SPRITE_PUBLIC_URL"
-else
-    echo "To wake sprite from suspension, hit the public URL on port $WAKEUP_PORT."
+    echo "  - Wakes sprite and redirects to Tailscale URL if on tailnet"
+    echo "  - Shows 'Unauthorized' if not on tailnet"
 fi
-echo "Then access services via Tailscale (use HTTPS URL for PWA/offline support)."
 echo ""
 echo "To check service status:"
 echo "  sprite_api /v1/services"
 echo ""
-echo "NOTE: Log out and back in for SPRITE_PUBLIC_URL to be available in new sessions."
+echo "NOTE: Log out and back in for environment variables to be available in new sessions."
 echo ""
