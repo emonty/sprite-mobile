@@ -4,7 +4,7 @@
   "description": "Mobile-friendly web interface for chatting with Claude Code on a Sprite",
   "type": "module",
   "scripts": {
-    "start": "bun run server.ts",
+    "start": "bun --hot run server.ts",
     "dev": "bun --watch run server.ts"
   },
   "dependencies": {}
