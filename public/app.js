@@ -659,8 +659,12 @@
           break;
 
         case 'result':
-          // Tool finished - remove indicator regardless of result content
+          // Claude finished responding - clean up and focus input on desktop
           removeToolIndicator();
+          finalizeAssistantMessage();
+          if (isDesktop()) {
+            inputEl.focus();
+          }
           break;
       }
       scrollToBottom();
