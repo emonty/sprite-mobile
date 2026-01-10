@@ -662,9 +662,7 @@
           // Claude finished responding - clean up and focus input on desktop
           removeToolIndicator();
           finalizeAssistantMessage();
-          console.log('result event, isDesktop:', isDesktop());
           if (isDesktop()) {
-            console.log('focusing input');
             inputEl.focus();
           }
           break;
