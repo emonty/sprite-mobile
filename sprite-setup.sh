@@ -357,7 +357,7 @@ else
     echo "Starting sprite-mobile service on port $APP_PORT..."
     sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
       \"cmd\": \"bash\",
-      \"args\": [\"-c\", \"cd $SPRITE_MOBILE_DIR && git pull --ff-only || true; bun --hot run server.ts\"]
+      \"args\": [\"-c\", \"cd $SPRITE_MOBILE_DIR && if [ \\\"\\$(git branch --show-current)\\\" = \\\"main\\\" ]; then git pull --ff-only || true; fi; bun --hot run server.ts\"]
     }"
 fi
 
