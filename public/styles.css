@@ -5,16 +5,16 @@
     }
 
     :root {
-      --bg: #1a1a1a;
-      --bg-secondary: #252525;
-      --bg-tertiary: #2d2d2d;
+      --bg: #1a1a2e;
+      --bg-secondary: #252539;
+      --bg-tertiary: #2d2d41;
       --text: #e5e5e5;
       --text-muted: #888;
       --accent: #a855f7;
-      --user-bg: #3b3b3b;
-      --assistant-bg: #252525;
-      --border: #333;
-      --input-bg: #2d2d2d;
+      --user-bg: #3b3b4f;
+      --assistant-bg: #252539;
+      --border: #333347;
+      --input-bg: #2d2d41;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-top: env(safe-area-inset-top, 0px);
       --sidebar-width: 280px;
@@ -22,7 +22,7 @@
 
     html {
       height: 100%;
-      background: #1a1a1a;
+      background: #1a1a2e;
       background: var(--bg);
     }
 
