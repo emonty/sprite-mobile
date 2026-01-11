@@ -89,3 +89,7 @@ export function deleteMessagesFile(sessionId: string) {
     if (existsSync(msgFile)) unlinkSync(msgFile);
   } catch {}
 }
+
+export function saveMessages(sessionId: string, messages: StoredMessage[]) {
+  writeFileSync(getMessagesFile(sessionId), JSON.stringify(messages, null, 2));
+}

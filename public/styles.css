@@ -82,6 +82,29 @@
       font-weight: 600;
     }
 
+    #sidebar-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #attach-session-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--bg-tertiary);
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #attach-session-btn:active {
+      background: var(--bg);
+    }
+
     #new-chat-btn {
       width: 32px;
       height: 32px;
@@ -971,6 +994,91 @@
       font-size: 11px;
       color: var(--text-muted);
       margin-top: 2px;
+    }
+
+    /* External Sessions Modal */
+    #external-sessions-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 20px;
+      padding-top: calc(20px + var(--safe-top));
+      padding-bottom: calc(20px + var(--safe-bottom));
+    }
+
+    #external-sessions-modal.open {
+      display: flex;
+    }
+
+    .modal-description {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .external-sessions-list {
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .external-sessions-list .loading {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+    }
+
+    .external-sessions-list .empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+    }
+
+    .external-session-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .external-session-item:active {
+      background: var(--bg);
+    }
+
+    .external-session-item .session-id {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .external-session-item .session-cwd {
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .external-session-item .session-preview {
+      font-size: 13px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .external-session-item .session-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 12px;
     }
 
     /* Pull to refresh */
