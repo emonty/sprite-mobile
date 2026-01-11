@@ -528,7 +528,8 @@ fi
 echo "Starting tailnet-gate service on port $WAKEUP_PORT..."
 sprite_api -X PUT '/v1/services/tailnet-gate?duration=3s' -d "{
   \"cmd\": \"bun\",
-  \"args\": [\"run\", \"$GATE_DIR/server.ts\"]
+  \"args\": [\"run\", \"$GATE_DIR/server.ts\"],
+  \"http_port\": $WAKEUP_PORT
 }"
 
 # ============================================
