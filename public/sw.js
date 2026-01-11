@@ -69,9 +69,9 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sprite Code - Offline</title>
 <style>
-  body{margin:0;background:#1a1a1a;color:#e5e5e5;font-family:-apple-system,sans-serif;
+  body{margin:0;background:#1a1a2e;color:#e5e5e5;font-family:-apple-system,sans-serif;
   display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;padding:20px;box-sizing:border-box}
-  .spinner{width:40px;height:40px;border:3px solid #333;border-top-color:#d4a574;
+  .spinner{width:40px;height:40px;border:3px solid #333347;border-top-color:#d4a574;
   border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px}
   @keyframes spin{to{transform:rotate(360deg)}}
   #status{margin-bottom:8px;font-size:18px}
@@ -79,7 +79,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
   #log{color:#666;font-size:12px;font-family:monospace;max-height:150px;overflow-y:auto;text-align:left;width:100%;max-width:300px}
   .log-entry{margin:4px 0}
   button{margin-top:20px;padding:12px 24px;background:#d4a574;border:none;border-radius:8px;
-  color:#1a1a1a;font-size:16px;cursor:pointer}
+  color:#1a1a2e;font-size:16px;cursor:pointer}
 </style>
 </head><body>
 <div class="spinner"></div>
