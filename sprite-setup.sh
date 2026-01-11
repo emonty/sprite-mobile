@@ -40,6 +40,7 @@ echo "  8. Install ttyd (web terminal) on port $TTYD_PORT"
 echo "  9. Clone sprite-mobile and run on port $APP_PORT"
 echo "  10. Set up Tailscale Serve (HTTPS for PWA support)"
 echo "  11. Start tailnet gate on port $WAKEUP_PORT (public entry point)"
+echo "  12. Create CLAUDE.md with environment instructions"
 echo ""
 echo "Press Enter to continue or Ctrl+C to abort..."
 read
@@ -529,6 +530,64 @@ sprite_api -X PUT '/v1/services/tailnet-gate?duration=3s' -d "{
   \"cmd\": \"bun\",
   \"args\": [\"run\", \"$GATE_DIR/server.ts\"]
 }"
+
+# ============================================
+# Step 12: Create CLAUDE.md
+# ============================================
+echo ""
+echo "=== Step 12: CLAUDE.md Setup ==="
+
+CLAUDE_MD_PATH="$HOME/CLAUDE.md"
+
+echo "Creating CLAUDE.md with environment instructions..."
+cat > "$CLAUDE_MD_PATH" << 'CLAUDE_EOF'
+# Claude Instructions
+
+## First Steps
+
+Always read `/.sprite/llm.txt` at the start of a session to understand the Sprite environment, available services, checkpoints, and network policy.
+
+## Checkpointing
+
+Claude should proactively manage checkpoints using the `/sprite` skill or `sprite-env checkpoint` commands:
+- Create checkpoints after significant changes or successful implementations
+- Before risky operations, create a checkpoint as a restore point
+- Use `sprite-env checkpoint list` to view available checkpoints
+- Use `sprite-env checkpoint restore <name>` to restore if needed
+
+## Services
+
+### sprite-mobile (port 8081)
+Mobile-friendly web interface for chatting with Claude Code. Located at `~/.sprite-mobile/`.
+
+- Auto-updates on service start via `git pull`
+- Supports multiple concurrent chat sessions with persistent history
+- Uses WebSocket for real-time streaming
+- Data stored in `~/.sprite-mobile/data/`
+
+Service command:
+```bash
+sprite-env services list  # View status
+sprite-env services logs sprite-mobile  # View logs
+```
+
+### tailnet-gate (port 8080)
+Public entry point that gates access via Tailscale. Located at `~/.tailnet-gate/`.
+
+**How it works:**
+1. User visits public URL (e.g., `https://sprite.fly.dev`)
+2. Gate serves a page that attempts to reach the Tailscale URL
+3. If reachable (user on tailnet) → redirects to Tailscale HTTPS URL
+4. If unreachable → shows "Unauthorized" page
+
+This ensures only users on the tailnet can access the sprite without requiring passwords or tokens.
+
+### Other Services
+- `tailscaled` - Tailscale daemon
+- `ttyd` (port 8181) - Web terminal interface
+CLAUDE_EOF
+
+echo "Created $CLAUDE_MD_PATH"
 
 # ============================================
 # Setup Complete
