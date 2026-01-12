@@ -99,6 +99,7 @@ If you prefer to set things up manually:
 ```bash
 git clone <repo-url> sprite-mobile
 cd sprite-mobile
+bun install
 bun start
 ```
 

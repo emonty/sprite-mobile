@@ -163,16 +163,14 @@ function parseCliSessionMessages(cwd: string, claudeSessionId: string): StoredMe
   return messages;
 }
 
-// Public URL from environment
-const SPRITE_PUBLIC_URL = process.env.SPRITE_PUBLIC_URL || "";
-
 export function handleApi(req: Request, url: URL): Response | Promise<Response> | null {
   const path = url.pathname;
 
   // GET /api/config - returns public configuration for the client
+  // Read env var lazily so .env file has time to load
   if (req.method === "GET" && path === "/api/config") {
     return Response.json({
-      publicUrl: SPRITE_PUBLIC_URL,
+      publicUrl: process.env.SPRITE_PUBLIC_URL || "",
     });
   }
 

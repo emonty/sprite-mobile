@@ -344,6 +344,11 @@ else
     gh repo clone "$SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_DIR"
 fi
 
+# Install dependencies
+echo "Installing sprite-mobile dependencies..."
+cd "$SPRITE_MOBILE_DIR"
+bun install
+
 # Write SPRITE_PUBLIC_URL to sprite-mobile/.env
 if [ -n "$SPRITE_PUBLIC_URL" ]; then
     echo "Writing SPRITE_PUBLIC_URL to sprite-mobile/.env..."
@@ -357,8 +362,8 @@ if sprite_api /v1/services 2>/dev/null | grep -q '"sprite-mobile"'; then
 else
     echo "Starting sprite-mobile service on port $APP_PORT..."
     sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
-      \"cmd\": \"bash\",
-      \"args\": [\"-c\", \"cd $SPRITE_MOBILE_DIR && if [ \\\"\\$(git branch --show-current)\\\" = \\\"main\\\" ]; then git pull --ff-only || true; fi; bun --hot run server.ts\"]
+      \"cmd\": \"bun\",
+      \"args\": [\"--hot\", \"run\", \"$SPRITE_MOBILE_DIR/server.ts\"]
     }"
 fi
 
