@@ -27,6 +27,7 @@ If running elsewhere, you'll need to install these manually and authenticate Cla
 - **Multi-client Support**: Multiple browser tabs can connect to the same session
 - **Auto-naming**: Chat sessions are automatically named based on conversation content
 - **Smart Auto-focus**: Input field auto-focuses on desktop after Claude responds (disabled on mobile to avoid keyboard popup)
+- **Voice Input**: Tap the microphone button to dictate messages (uses Web Speech API, works on iOS Safari and Android Chrome)
 - **Dynamic Branding**: Header displays the sprite's hostname with a neon green 👾
 - **Tailscale Integration**: HTTPS access via Tailscale Serve with automatic redirect from public URL
 - **Tailnet Gate**: Public URL wakes sprite and redirects to Tailscale URL (if on tailnet)
@@ -34,6 +35,7 @@ If running elsewhere, you'll need to install these manually and authenticate Cla
 - **Auto-update**: Pulls latest code when the service starts
 - **Sprite Network**: Automatic discovery of other sprites in your Fly.io organization via shared Tigris bucket
 - **Hot Reloading**: Server code changes take effect immediately without restart
+- **Network Restart**: Run `scripts/restart-others.sh` to restart sprite-mobile on all other network sprites after pulling updates
 
 ## Access Model
 
@@ -78,8 +80,7 @@ The script will:
 1. Configure hostname and git user
 2. Authenticate Claude CLI, GitHub CLI, Fly.io CLI, Sprites CLI
 3. Install and configure Tailscale
-4. Install ttyd (web terminal)
-5. Clone and run sprite-mobile
+4. Clone and run sprite-mobile
 5.5. Configure Sprite Network (optional - enables automatic discovery of other sprites in your org)
 6. Set up Tailscale Serve (HTTPS for PWA support)
 7. Start the Tailnet Gate (public entry point)
@@ -130,7 +131,6 @@ After setup, these services run on your sprite:
 |---------|------|-------------|
 | `tailnet-gate` | 8080 | Public entry point, redirects to Tailscale URL |
 | `sprite-mobile` | 8081 | Main app server |
-| `ttyd` | 8181 | Web terminal |
 | `tailscaled` | - | Tailscale daemon |
 
 ### Data Storage
