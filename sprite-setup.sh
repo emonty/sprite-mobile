@@ -89,8 +89,8 @@ export_config() {
 
     # Read saved Tailscale reusable auth key if available
     local tailscale_auth_key=""
-    if [ -f "$HOME/.sprite-mobile/.tailscale-auth-key" ]; then
-        tailscale_auth_key=$(cat "$HOME/.sprite-mobile/.tailscale-auth-key")
+    if [ -f "$HOME/.config/sprite/tailscale-auth-key" ]; then
+        tailscale_auth_key=$(cat "$HOME/.config/sprite/tailscale-auth-key")
     fi
 
     # Output JSON
@@ -575,7 +575,7 @@ step_7_tailscale() {
     echo ""
     echo "=== Step 7: Tailscale Installation ==="
 
-    TAILSCALE_AUTH_KEY_FILE="$HOME/.sprite-mobile/.tailscale-auth-key"
+    TAILSCALE_AUTH_KEY_FILE="$HOME/.config/sprite/tailscale-auth-key"
 
     if command -v tailscale &>/dev/null; then
         echo "Tailscale already installed"
@@ -681,17 +681,10 @@ step_8_sprite_mobile() {
         cd "$SPRITE_MOBILE_DIR"
         git pull
     elif [ -d "$SPRITE_MOBILE_DIR" ]; then
-        # Directory exists but not a git repo (e.g., created by tailscale auth key step)
-        # Save any existing files, clone, then restore
+        # Directory exists but not a git repo - remove and clone fresh
         echo "sprite-mobile directory exists but is not a git repo, cloning..."
-        if [ -f "$SPRITE_MOBILE_DIR/.tailscale-auth-key" ]; then
-            cp "$SPRITE_MOBILE_DIR/.tailscale-auth-key" /tmp/.tailscale-auth-key.bak
-        fi
         rm -rf "$SPRITE_MOBILE_DIR"
         gh repo clone "$SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_DIR"
-        if [ -f /tmp/.tailscale-auth-key.bak ]; then
-            mv /tmp/.tailscale-auth-key.bak "$SPRITE_MOBILE_DIR/.tailscale-auth-key"
-        fi
     else
         echo "Cloning sprite-mobile..."
         gh repo clone "$SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_DIR"
