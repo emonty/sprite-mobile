@@ -846,23 +846,35 @@ const html = \`<!DOCTYPE html>
   </div>
   <script>
     const tailscaleUrl = "\${TAILSCALE_URL}";
+    const maxRetries = 10;
+    const retryDelay = 2000;
+
+    async function tryConnect(attempt) {
+      try {
+        const r = await fetch(tailscaleUrl + '/api/config', {
+          mode: 'cors',
+          signal: AbortSignal.timeout(5000)
+        });
+        if (r.ok) {
+          window.location.href = tailscaleUrl;
+        } else {
+          throw new Error('not ok');
+        }
+      } catch (e) {
+        if (attempt < maxRetries) {
+          setTimeout(() => tryConnect(attempt + 1), retryDelay);
+        } else {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('blocked').style.display = 'block';
+        }
+      }
+    }
 
     if (!tailscaleUrl) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('blocked').style.display = 'block';
     } else {
-      fetch(tailscaleUrl + '/api/config', {
-        mode: 'cors',
-        signal: AbortSignal.timeout(5000)
-      })
-      .then(r => {
-        if (r.ok) window.location.href = tailscaleUrl;
-        else throw new Error('not ok');
-      })
-      .catch(() => {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('blocked').style.display = 'block';
-      });
+      tryConnect(1);
     }
   </script>
 </body>
