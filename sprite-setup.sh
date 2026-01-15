@@ -370,10 +370,15 @@ step_4_github() {
     echo "=== Step 4: GitHub CLI Authentication ==="
 
     if gh auth status &>/dev/null; then
-        echo "GitHub CLI already authenticated, skipping..."
+        echo "GitHub CLI already authenticated"
+        # Ensure git credential helper is configured
+        gh auth setup-git 2>/dev/null || true
+        echo "Git credential helper configured"
     elif [ "$NON_INTERACTIVE" = "true" ]; then
         if [ -f "$HOME/.config/gh/hosts.yml" ]; then
             echo "GitHub credentials file installed (verifying...)"
+            # Setup git credential helper first
+            gh auth setup-git 2>/dev/null || true
             if gh auth status &>/dev/null; then
                 echo "GitHub CLI authenticated successfully"
             else
@@ -387,6 +392,9 @@ step_4_github() {
         echo "Starting GitHub CLI authentication..."
         echo "Follow the prompts to authenticate:"
         gh auth login
+        # Setup git credential helper after auth
+        gh auth setup-git 2>/dev/null || true
+        echo "Git credential helper configured"
     fi
 }
 
@@ -667,10 +675,23 @@ step_8_sprite_mobile() {
 
     SPRITE_MOBILE_DIR="$HOME/.sprite-mobile"
 
-    if [ -d "$SPRITE_MOBILE_DIR" ]; then
+    if [ -d "$SPRITE_MOBILE_DIR/.git" ]; then
+        # It's a git repo, pull latest
         echo "sprite-mobile already exists, pulling latest..."
         cd "$SPRITE_MOBILE_DIR"
         git pull
+    elif [ -d "$SPRITE_MOBILE_DIR" ]; then
+        # Directory exists but not a git repo (e.g., created by tailscale auth key step)
+        # Save any existing files, clone, then restore
+        echo "sprite-mobile directory exists but is not a git repo, cloning..."
+        if [ -f "$SPRITE_MOBILE_DIR/.tailscale-auth-key" ]; then
+            cp "$SPRITE_MOBILE_DIR/.tailscale-auth-key" /tmp/.tailscale-auth-key.bak
+        fi
+        rm -rf "$SPRITE_MOBILE_DIR"
+        gh repo clone "$SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_DIR"
+        if [ -f /tmp/.tailscale-auth-key.bak ]; then
+            mv /tmp/.tailscale-auth-key.bak "$SPRITE_MOBILE_DIR/.tailscale-auth-key"
+        fi
     else
         echo "Cloning sprite-mobile..."
         gh repo clone "$SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_DIR"
