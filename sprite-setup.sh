@@ -394,7 +394,15 @@ step_4_github() {
         rm -f "$HOME/.config/gh/hosts.yml" 2>/dev/null
         mkdir -p "$HOME/.config/gh"
         echo "Follow the prompts to authenticate:"
-        gh auth login
+
+        # Try auth, retry once if it fails (works around first-try paste issues)
+        if ! gh auth login; then
+            echo ""
+            echo "Auth failed. This sometimes happens on first try - let's retry..."
+            rm -f "$HOME/.config/gh/hosts.yml" 2>/dev/null
+            gh auth login
+        fi
+
         # Setup git credential helper after auth
         gh auth setup-git 2>/dev/null || true
         echo "Git credential helper configured"
