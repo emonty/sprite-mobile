@@ -390,6 +390,9 @@ step_4_github() {
         fi
     else
         echo "Starting GitHub CLI authentication..."
+        # Clear any stale state that might interfere
+        rm -f "$HOME/.config/gh/hosts.yml" 2>/dev/null
+        mkdir -p "$HOME/.config/gh"
         echo "Follow the prompts to authenticate:"
         gh auth login
         # Setup git credential helper after auth
