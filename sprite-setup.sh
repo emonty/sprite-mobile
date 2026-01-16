@@ -283,23 +283,26 @@ prompt_for_config() {
     echo "  GIT_USER_NAME=Your Name"
     echo "  GIT_USER_EMAIL=you@example.com"
     echo ""
-    echo "Press Enter twice when done, or just Enter to skip:"
+    echo "Type 'END' on a line by itself when done, or just press Enter to skip:"
     echo ""
 
     local config=""
-    local empty_lines=0
+    local first_line=true
 
     # Read from /dev/tty explicitly to avoid consuming stdin
     while IFS= read -r line </dev/tty; do
-        if [ -z "$line" ]; then
-            empty_lines=$((empty_lines + 1))
-            if [ $empty_lines -ge 1 ]; then
-                break
-            fi
-        else
-            empty_lines=0
-            config+="$line"$'\n'
+        # Check for END marker or empty first line (skip)
+        if [ "$line" = "END" ]; then
+            break
         fi
+
+        if [ -z "$line" ] && [ "$first_line" = "true" ]; then
+            # Empty line on first input = skip
+            break
+        fi
+
+        first_line=false
+        config+="$line"$'\n'
     done
 
     if [ -n "$config" ]; then
