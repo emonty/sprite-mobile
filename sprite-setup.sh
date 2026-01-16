@@ -1504,6 +1504,20 @@ run_all_steps() {
     step_6_5_network
     step_10_tailnet_gate
     step_11_claude_md
+
+    # Final restart of sprite-mobile to pick up all environment changes
+    echo ""
+    echo "Restarting sprite-mobile to pick up all environment changes..."
+    SPRITE_MOBILE_DIR="$HOME/.sprite-mobile"
+    if sprite_api /v1/services 2>/dev/null | grep -q '"sprite-mobile"'; then
+        sprite_api -X DELETE '/v1/services/sprite-mobile' 2>/dev/null || true
+        sleep 2
+        sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
+          \"cmd\": \"$SPRITE_MOBILE_DIR/start-service.sh\"
+        }"
+        echo "sprite-mobile restarted"
+    fi
+
     show_summary
 }
 
