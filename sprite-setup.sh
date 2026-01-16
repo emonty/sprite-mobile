@@ -695,6 +695,15 @@ step_5_flyctl() {
         curl -L https://fly.io/install.sh | sh
     fi
 
+    # Add flyctl to PATH in .zshrc if not already present
+    if ! grep -q "FLYCTL_INSTALL" ~/.zshrc 2>/dev/null; then
+        echo "" >> ~/.zshrc
+        echo "# Fly.io CLI" >> ~/.zshrc
+        echo 'export FLYCTL_INSTALL="/home/sprite/.fly"' >> ~/.zshrc
+        echo 'export PATH="$FLYCTL_INSTALL/bin:$PATH"' >> ~/.zshrc
+        echo "Added flyctl to PATH in ~/.zshrc"
+    fi
+
     # Authenticate Fly.io if not already logged in
     if flyctl auth whoami &>/dev/null; then
         echo "Fly.io already authenticated"
