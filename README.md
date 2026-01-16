@@ -222,7 +222,6 @@ SPRITE_API_TOKEN=cl-sprites/org/id/token
 SPRITE_PUBLIC_URL=https://my-sprite.fly.dev
 TAILSCALE_SERVE_URL=https://my-sprite.tailxxxxx.ts.net
 SPRITE_MOBILE_REPO=https://github.com/org/sprite-mobile
-FLYCTL_INSTALL=/home/sprite/.fly
 ```
 
 ### Key Variables

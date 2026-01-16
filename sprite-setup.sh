@@ -782,8 +782,7 @@ step_5_flyctl() {
     echo ""
     echo "=== Step 4: Fly.io CLI Installation ==="
 
-    # Save flyctl install location to ~/.sprite-config
-    update_sprite_config "FLYCTL_INSTALL" "/home/sprite/.fly"
+    # Set flyctl install location (constant path, handled by shell configs)
     export FLYCTL_INSTALL="/home/sprite/.fly"
     export PATH="$FLYCTL_INSTALL/bin:$PATH"
 
