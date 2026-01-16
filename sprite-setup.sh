@@ -283,19 +283,14 @@ prompt_for_config() {
     echo "  GIT_USER_NAME=Your Name"
     echo "  GIT_USER_EMAIL=you@example.com"
     echo ""
-    read -p "Paste config? [y/N]: " want_config </dev/tty
-    if [ "$want_config" != "y" ] && [ "$want_config" != "Y" ]; then
-        return
-    fi
-
-    echo ""
-    echo "Paste your config below (will auto-detect end after 1 second of no input):"
+    echo "Paste config (end with an empty line), or just press Enter to skip:"
     echo ""
 
     local config=""
 
-    # Read from /dev/tty with timeout to detect end of paste
-    while IFS= read -r -t 1 line </dev/tty 2>/dev/null; do
+    # Read from /dev/tty to avoid consuming stdin
+    while IFS= read -r line </dev/tty; do
+        [ -z "$line" ] && break
         config+="$line"$'\n'
     done
 
