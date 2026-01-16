@@ -25,7 +25,7 @@ fi
 # Configuration (set these or export before running)
 GIT_USER_NAME="${GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
-SPRITE_MOBILE_REPO="${SPRITE_MOBILE_REPO:-https://github.com/superfly/sprite-mobile}"
+SPRITE_MOBILE_REPO="${SPRITE_MOBILE_REPO:-https://github.com/clouvet/sprite-mobile}"
 SPRITE_PUBLIC_URL="${SPRITE_PUBLIC_URL:-}"
 APP_PORT="${APP_PORT:-8081}"
 WAKEUP_PORT="${WAKEUP_PORT:-8080}"
