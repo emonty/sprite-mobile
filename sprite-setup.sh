@@ -532,17 +532,19 @@ step_3_claude() {
         fi
     }
 
-    if claude auth status &>/dev/null; then
-        echo "Claude CLI already authenticated, skipping..."
-    elif [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
-        # Token provided via config paste or environment
-        echo "Claude OAuth token provided, saving..."
+    # Save tokens to .zshrc first if provided (regardless of current auth status)
+    if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+        echo "Claude OAuth token provided, saving to .zshrc..."
         save_claude_token "oauth" "$CLAUDE_CODE_OAUTH_TOKEN"
     elif [ -n "$ANTHROPIC_API_KEY" ]; then
-        # API key provided via config paste or environment
-        echo "Anthropic API key provided, saving..."
+        echo "Anthropic API key provided, saving to .zshrc..."
         echo "  Note: This uses API billing, not your subscription"
         save_claude_token "apikey" "$ANTHROPIC_API_KEY"
+    fi
+
+    # Check authentication status
+    if claude auth status &>/dev/null; then
+        echo "Claude CLI already authenticated"
     elif [ "$NON_INTERACTIVE" = "true" ]; then
         if [ -f "$HOME/.claude/.credentials.json" ]; then
             echo "Claude credentials file installed (will be validated on first use)"
@@ -600,6 +602,20 @@ step_4_github() {
     echo ""
     echo "=== Step 4: GitHub CLI Authentication ==="
 
+    # Save GH_TOKEN to .zshrc first if provided (regardless of current auth status)
+    if [ -n "$GH_TOKEN" ]; then
+        if ! grep -q "export GH_TOKEN=" ~/.zshrc 2>/dev/null; then
+            echo "" >> ~/.zshrc
+            echo "# GitHub Personal Access Token" >> ~/.zshrc
+            echo "export GH_TOKEN=\"$GH_TOKEN\"" >> ~/.zshrc
+            echo "Added GH_TOKEN to ~/.zshrc"
+        else
+            sed -i "s|^export GH_TOKEN=.*|export GH_TOKEN=\"$GH_TOKEN\"|" ~/.zshrc
+            echo "Updated GH_TOKEN in ~/.zshrc"
+        fi
+    fi
+
+    # Check authentication and authenticate if needed
     if gh auth status &>/dev/null; then
         echo "GitHub CLI already authenticated"
         # Ensure git credential helper is configured
@@ -607,23 +623,12 @@ step_4_github() {
         echo "Git credential helper configured"
     elif [ -n "$GH_TOKEN" ]; then
         # Token provided via config paste or environment
-        echo "GitHub token provided, authenticating..."
+        echo "GitHub token provided, authenticating with gh CLI..."
         echo "$GH_TOKEN" | gh auth login --with-token
         gh auth setup-git 2>/dev/null || true
         if gh auth status &>/dev/null; then
             echo "GitHub CLI authenticated successfully"
             echo "Git credential helper configured"
-
-            # Save GH_TOKEN to .zshrc for future shell sessions
-            if ! grep -q "export GH_TOKEN=" ~/.zshrc 2>/dev/null; then
-                echo "" >> ~/.zshrc
-                echo "# GitHub Personal Access Token" >> ~/.zshrc
-                echo "export GH_TOKEN=\"$GH_TOKEN\"" >> ~/.zshrc
-                echo "Added GH_TOKEN to ~/.zshrc"
-            else
-                sed -i "s|^export GH_TOKEN=.*|export GH_TOKEN=\"$GH_TOKEN\"|" ~/.zshrc
-                echo "Updated GH_TOKEN in ~/.zshrc"
-            fi
         else
             echo "Warning: GitHub authentication failed with provided token"
         fi
@@ -721,27 +726,27 @@ step_5_flyctl() {
         echo "Added flyctl to PATH in ~/.zshrc"
     fi
 
+    # Save FLY_API_TOKEN to .zshrc first if provided (regardless of current auth status)
+    if [ -n "$FLY_API_TOKEN" ]; then
+        if ! grep -q "export FLY_API_TOKEN=" ~/.zshrc 2>/dev/null; then
+            echo "" >> ~/.zshrc
+            echo "# Fly.io API token" >> ~/.zshrc
+            echo "export FLY_API_TOKEN=\"$FLY_API_TOKEN\"" >> ~/.zshrc
+            echo "Added FLY_API_TOKEN to ~/.zshrc"
+        else
+            sed -i "s|^export FLY_API_TOKEN=.*|export FLY_API_TOKEN=\"$FLY_API_TOKEN\"|" ~/.zshrc
+            echo "Updated FLY_API_TOKEN in ~/.zshrc"
+        fi
+    fi
+
     # Authenticate Fly.io if not already logged in
     if flyctl auth whoami &>/dev/null; then
         echo "Fly.io already authenticated"
     elif [ -n "$FLY_API_TOKEN" ]; then
         # Token provided via config paste or environment
-        echo "Fly.io API token provided, exporting for use..."
+        echo "Fly.io API token provided (already saved to .zshrc)"
         # FLY_API_TOKEN is already exported, flyctl will use it automatically
-        if flyctl auth whoami &>/dev/null; then
-            echo "Fly.io authenticated successfully with token"
-
-            # Save FLY_API_TOKEN to .zshrc for future shell sessions
-            if ! grep -q "export FLY_API_TOKEN=" ~/.zshrc 2>/dev/null; then
-                echo "" >> ~/.zshrc
-                echo "# Fly.io API token" >> ~/.zshrc
-                echo "export FLY_API_TOKEN=\"$FLY_API_TOKEN\"" >> ~/.zshrc
-                echo "Added FLY_API_TOKEN to ~/.zshrc"
-            else
-                sed -i "s|^export FLY_API_TOKEN=.*|export FLY_API_TOKEN=\"$FLY_API_TOKEN\"|" ~/.zshrc
-                echo "Updated FLY_API_TOKEN in ~/.zshrc"
-            fi
-        else
+        if ! flyctl auth whoami &>/dev/null; then
             echo "Warning: FLY_API_TOKEN provided but authentication failed"
         fi
     elif [ "$NON_INTERACTIVE" = "true" ]; then
@@ -779,26 +784,28 @@ step_6_sprites() {
         echo "Sprites CLI installed to /usr/local/bin/sprite"
     fi
 
+    # Save SPRITE_API_TOKEN to .zshrc first if provided (regardless of current auth status)
+    if [ -n "$SPRITE_API_TOKEN" ]; then
+        if ! grep -q "export SPRITE_API_TOKEN=" ~/.zshrc 2>/dev/null; then
+            echo "" >> ~/.zshrc
+            echo "# Sprite CLI API token" >> ~/.zshrc
+            echo "export SPRITE_API_TOKEN=\"$SPRITE_API_TOKEN\"" >> ~/.zshrc
+            echo "Added SPRITE_API_TOKEN to ~/.zshrc"
+        else
+            sed -i "s|^export SPRITE_API_TOKEN=.*|export SPRITE_API_TOKEN=\"$SPRITE_API_TOKEN\"|" ~/.zshrc
+            echo "Updated SPRITE_API_TOKEN in ~/.zshrc"
+        fi
+    fi
+
     # Authenticate Sprites CLI and org
     if [ -d "$HOME/.sprite" ]; then
         echo "Sprites CLI already authenticated"
     elif [ -n "$SPRITE_API_TOKEN" ]; then
         # Token provided via config paste or environment
-        echo "Sprite API token provided, setting up authentication..."
+        echo "Sprite API token provided, setting up authentication (already saved to .zshrc)..."
         sprite auth setup --token "$SPRITE_API_TOKEN"
         if [ $? -eq 0 ]; then
             echo "Sprites CLI authenticated successfully with token"
-
-            # Save SPRITE_API_TOKEN to .zshrc for future reference
-            if ! grep -q "export SPRITE_API_TOKEN=" ~/.zshrc 2>/dev/null; then
-                echo "" >> ~/.zshrc
-                echo "# Sprite CLI API token" >> ~/.zshrc
-                echo "export SPRITE_API_TOKEN=\"$SPRITE_API_TOKEN\"" >> ~/.zshrc
-                echo "Added SPRITE_API_TOKEN to ~/.zshrc"
-            else
-                sed -i "s|^export SPRITE_API_TOKEN=.*|export SPRITE_API_TOKEN=\"$SPRITE_API_TOKEN\"|" ~/.zshrc
-                echo "Updated SPRITE_API_TOKEN in ~/.zshrc"
-            fi
         else
             echo "Warning: Failed to authenticate with provided token"
             echo "  Token format should be: org-slug/org-id/token-id/token-value"
