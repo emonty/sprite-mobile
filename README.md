@@ -97,13 +97,16 @@ To set up a fresh Sprite with all dependencies, authentication, and services:
    ```
 
 The script will:
-1. Configure hostname and git user
-2. Authenticate Claude CLI, GitHub CLI, Fly.io CLI, Sprites CLI
-3. Set up Sprite Network credentials (optional - enables automatic discovery of other sprites in your org)
-4. Install and configure Tailscale
-5. Clone and run sprite-mobile
-6. Set up Tailscale Serve (HTTPS for PWA support) and restart sprite-mobile to register with the network
-7. Start the Tailnet Gate (public entry point)
+1. Configure hostname, git user, URLs, and repo
+2. Authenticate Claude CLI
+3. Authenticate GitHub CLI
+4. Install Fly.io CLI
+5. Install Sprites CLI
+6. Install and configure Tailscale
+7. Set up Tailscale Serve (HTTPS for PWA support)
+8. Clone and run sprite-mobile
+9. Set up Sprite Network credentials (optional - enables automatic discovery of other sprites in your org)
+10. Start the Tailnet Gate (public entry point)
 
 The script is idempotent and can be safely re-run.
 
