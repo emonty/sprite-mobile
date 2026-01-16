@@ -83,7 +83,7 @@ The script will:
 6. Set up Tailscale Serve (HTTPS for PWA support) and restart sprite-mobile to register with the network
 7. Start the Tailnet Gate (public entry point)
 
-The script is idempotent and can be safely re-run. It supports both old (`curl-sprite-api`) and new (`sprite-env`) sprite API commands.
+The script is idempotent and can be safely re-run.
 
 The app is installed to `~/.sprite-mobile` (hidden directory). On each service start, it attempts to auto-update via `git pull` so all sprites receive updates when they wake up.
 
