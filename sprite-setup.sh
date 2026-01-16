@@ -571,10 +571,14 @@ CLAUDE_EOF
     if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
         echo "Claude OAuth token provided, saving to .zshrc..."
         save_claude_token "oauth" "$CLAUDE_CODE_OAUTH_TOKEN"
+        echo "Claude CLI authentication configured (will be validated on first use)"
+        return
     elif [ -n "$ANTHROPIC_API_KEY" ]; then
         echo "Anthropic API key provided, saving to .zshrc..."
         echo "  Note: This uses API billing, not your subscription"
         save_claude_token "apikey" "$ANTHROPIC_API_KEY"
+        echo "Claude CLI authentication configured (will be validated on first use)"
+        return
     fi
 
     # Check authentication status
