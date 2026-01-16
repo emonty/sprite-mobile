@@ -56,6 +56,88 @@ json_get_nested() {
 }
 
 # ============================================
+# Sprite Config Management
+# ============================================
+
+SPRITE_CONFIG_FILE="$HOME/.sprite-config"
+
+# Update or add a variable in ~/.sprite-config
+update_sprite_config() {
+    local key="$1"
+    local value="$2"
+
+    # Create file if it doesn't exist
+    if [ ! -f "$SPRITE_CONFIG_FILE" ]; then
+        cat > "$SPRITE_CONFIG_FILE" << 'CONFIG_HEADER'
+# Sprite Config - reusable across sprites
+# This file is sourced by both bash and zsh
+
+CONFIG_HEADER
+        chmod 600 "$SPRITE_CONFIG_FILE"
+    fi
+
+    # Update or append the key
+    if grep -q "^${key}=" "$SPRITE_CONFIG_FILE" 2>/dev/null; then
+        # Escape special characters in value for sed
+        local escaped_value=$(printf '%s\n' "$value" | sed 's/[&/\]/\\&/g')
+        sed -i "s|^${key}=.*|${key}=${escaped_value}|" "$SPRITE_CONFIG_FILE"
+    else
+        echo "${key}=${value}" >> "$SPRITE_CONFIG_FILE"
+    fi
+
+    # Export for current session
+    export "${key}=${value}"
+}
+
+# Ensure both bash and zsh source ~/.sprite-config
+ensure_shell_config_sourcing() {
+    local bashrc="$HOME/.bashrc"
+    local zshrc="$HOME/.zshrc"
+
+    # Bash configuration
+    if [ -f "$bashrc" ]; then
+        if ! grep -q "\.sprite-config" "$bashrc" 2>/dev/null; then
+            cat >> "$bashrc" << 'BASH_CONFIG'
+
+# Source sprite config (single source of truth for environment variables)
+if [ -f "$HOME/.sprite-config" ]; then
+    set -a  # Export all variables
+    source "$HOME/.sprite-config"
+    set +a  # Stop exporting
+fi
+
+# Add flyctl to PATH if installed
+if [ -n "$FLYCTL_INSTALL" ] && [ -d "$FLYCTL_INSTALL/bin" ]; then
+    export PATH="$FLYCTL_INSTALL/bin:$PATH"
+fi
+BASH_CONFIG
+            echo "Configured .bashrc to source ~/.sprite-config"
+        fi
+    fi
+
+    # Zsh configuration
+    if [ -f "$zshrc" ]; then
+        if ! grep -q "\.sprite-config" "$zshrc" 2>/dev/null; then
+            cat >> "$zshrc" << 'ZSH_CONFIG'
+
+# Source sprite config (single source of truth for environment variables)
+if [ -f "$HOME/.sprite-config" ]; then
+    set -a  # Export all variables
+    source "$HOME/.sprite-config"
+    set +a  # Stop exporting
+fi
+
+# Add flyctl to PATH if installed
+if [ -n "$FLYCTL_INSTALL" ] && [ -d "$FLYCTL_INSTALL/bin" ]; then
+    export PATH="$FLYCTL_INSTALL/bin:$PATH"
+fi
+ZSH_CONFIG
+            echo "Configured .zshrc to source ~/.sprite-config"
+        fi
+    fi
+}
+
+# ============================================
 # Export Configuration
 # ============================================
 
@@ -402,6 +484,9 @@ step_2_configuration() {
     echo ""
     echo "=== Step 2: Configuration ==="
 
+    # Ensure shell configs source ~/.sprite-config
+    ensure_shell_config_sourcing
+
     # Prompt for URLs and repo (skip prompts in non-interactive mode)
     if [ "$NON_INTERACTIVE" != "true" ]; then
         read -p "Sprite public URL (optional) [$SPRITE_PUBLIC_URL]: " input_url
@@ -411,35 +496,15 @@ step_2_configuration() {
         SPRITE_MOBILE_REPO="${input_repo:-$SPRITE_MOBILE_REPO}"
     fi
 
+    # Save to ~/.sprite-config
     if [ -n "$SPRITE_PUBLIC_URL" ]; then
-
-        # Add to ~/.zshrc for CLI access
-        echo "Adding SPRITE_PUBLIC_URL to ~/.zshrc..."
-        if grep -q "^export SPRITE_PUBLIC_URL=" ~/.zshrc 2>/dev/null; then
-            sed -i "s|^export SPRITE_PUBLIC_URL=.*|export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL|" ~/.zshrc
-            echo "  Updated existing SPRITE_PUBLIC_URL in ~/.zshrc"
-        else
-            echo "" >> ~/.zshrc
-            echo "# Sprite public URL" >> ~/.zshrc
-            echo "export SPRITE_PUBLIC_URL=$SPRITE_PUBLIC_URL" >> ~/.zshrc
-            echo "  Added SPRITE_PUBLIC_URL to ~/.zshrc"
-        fi
-        # Export for current session
-        export SPRITE_PUBLIC_URL
+        update_sprite_config "SPRITE_PUBLIC_URL" "$SPRITE_PUBLIC_URL"
+        echo "Saved SPRITE_PUBLIC_URL to ~/.sprite-config"
     fi
 
-    # Save SPRITE_MOBILE_REPO to ~/.zshrc
     if [ -n "$SPRITE_MOBILE_REPO" ]; then
-        if grep -q "^export SPRITE_MOBILE_REPO=" ~/.zshrc 2>/dev/null; then
-            sed -i "s|^export SPRITE_MOBILE_REPO=.*|export SPRITE_MOBILE_REPO=$SPRITE_MOBILE_REPO|" ~/.zshrc
-            echo "  Updated SPRITE_MOBILE_REPO in ~/.zshrc"
-        else
-            echo "" >> ~/.zshrc
-            echo "# sprite-mobile GitHub repo" >> ~/.zshrc
-            echo "export SPRITE_MOBILE_REPO=$SPRITE_MOBILE_REPO" >> ~/.zshrc
-            echo "  Added SPRITE_MOBILE_REPO to ~/.zshrc"
-        fi
-        export SPRITE_MOBILE_REPO
+        update_sprite_config "SPRITE_MOBILE_REPO" "$SPRITE_MOBILE_REPO"
+        echo "Saved SPRITE_MOBILE_REPO to ~/.sprite-config"
     fi
 
     # Git user configuration
@@ -499,25 +564,14 @@ step_3_claude() {
 
     CLAUDE_TOKEN_FILE="$HOME/.config/claude-code/token"
 
-    # Helper to save token to secured file and export in zshrc
+    # Helper to save token to ~/.sprite-config
     save_claude_token() {
         local token_type="$1"  # "oauth" or "apikey"
         local token_value="$2"
 
-        # Add export directly to .zshrc
         if [ "$token_type" = "oauth" ]; then
-            if ! grep -q "export CLAUDE_CODE_OAUTH_TOKEN=" ~/.zshrc 2>/dev/null; then
-                echo "" >> ~/.zshrc
-                echo "# Claude Code OAuth token" >> ~/.zshrc
-                echo "export CLAUDE_CODE_OAUTH_TOKEN=\"$token_value\"" >> ~/.zshrc
-                echo "Added CLAUDE_CODE_OAUTH_TOKEN to ~/.zshrc"
-            else
-                # Update existing token
-                sed -i "s|^export CLAUDE_CODE_OAUTH_TOKEN=.*|export CLAUDE_CODE_OAUTH_TOKEN=\"$token_value\"|" ~/.zshrc
-                echo "Updated CLAUDE_CODE_OAUTH_TOKEN in ~/.zshrc"
-            fi
-            # Export for current session
-            export CLAUDE_CODE_OAUTH_TOKEN="$token_value"
+            update_sprite_config "CLAUDE_CODE_OAUTH_TOKEN" "$token_value"
+            echo "Saved CLAUDE_CODE_OAUTH_TOKEN to ~/.sprite-config"
 
             # Set required flags in ~/.claude.json to skip onboarding and permissions
             mkdir -p ~/.claude
@@ -554,27 +608,19 @@ CLAUDE_EOF
                 echo "Created ~/.claude.json with required flags"
             fi
         else
-            if ! grep -q "export ANTHROPIC_API_KEY=" ~/.zshrc 2>/dev/null; then
-                echo "" >> ~/.zshrc
-                echo "# Anthropic API key" >> ~/.zshrc
-                echo "export ANTHROPIC_API_KEY=\"$token_value\"" >> ~/.zshrc
-                echo "Added ANTHROPIC_API_KEY to ~/.zshrc"
-            else
-                sed -i "s|^export ANTHROPIC_API_KEY=.*|export ANTHROPIC_API_KEY=\"$token_value\"|" ~/.zshrc
-                echo "Updated ANTHROPIC_API_KEY in ~/.zshrc"
-            fi
-            export ANTHROPIC_API_KEY="$token_value"
+            update_sprite_config "ANTHROPIC_API_KEY" "$token_value"
+            echo "Saved ANTHROPIC_API_KEY to ~/.sprite-config"
         fi
     }
 
-    # Save tokens to .zshrc first if provided (regardless of current auth status)
+    # Save tokens to ~/.sprite-config if provided (regardless of current auth status)
     if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
-        echo "Claude OAuth token provided, saving to .zshrc..."
+        echo "Claude OAuth token provided, saving to ~/.sprite-config..."
         save_claude_token "oauth" "$CLAUDE_CODE_OAUTH_TOKEN"
         echo "Claude CLI authentication configured (will be validated on first use)"
         return
     elif [ -n "$ANTHROPIC_API_KEY" ]; then
-        echo "Anthropic API key provided, saving to .zshrc..."
+        echo "Anthropic API key provided, saving to ~/.sprite-config..."
         echo "  Note: This uses API billing, not your subscription"
         save_claude_token "apikey" "$ANTHROPIC_API_KEY"
         echo "Claude CLI authentication configured (will be validated on first use)"
@@ -639,17 +685,10 @@ step_4_github() {
     echo ""
     echo "=== Step 4: GitHub CLI Authentication ==="
 
-    # Save GH_TOKEN to .zshrc first if provided (regardless of current auth status)
+    # Save GH_TOKEN to ~/.sprite-config if provided (regardless of current auth status)
     if [ -n "$GH_TOKEN" ]; then
-        if ! grep -q "export GH_TOKEN=" ~/.zshrc 2>/dev/null; then
-            echo "" >> ~/.zshrc
-            echo "# GitHub Personal Access Token" >> ~/.zshrc
-            echo "export GH_TOKEN=\"$GH_TOKEN\"" >> ~/.zshrc
-            echo "Added GH_TOKEN to ~/.zshrc"
-        else
-            sed -i "s|^export GH_TOKEN=.*|export GH_TOKEN=\"$GH_TOKEN\"|" ~/.zshrc
-            echo "Updated GH_TOKEN in ~/.zshrc"
-        fi
+        update_sprite_config "GH_TOKEN" "$GH_TOKEN"
+        echo "Saved GH_TOKEN to ~/.sprite-config"
     fi
 
     # Check authentication and authenticate if needed
@@ -743,7 +782,8 @@ step_5_flyctl() {
     echo ""
     echo "=== Step 5: Fly.io CLI Installation ==="
 
-    # Ensure flyctl is in PATH if installed
+    # Save flyctl install location to ~/.sprite-config
+    update_sprite_config "FLYCTL_INSTALL" "/home/sprite/.fly"
     export FLYCTL_INSTALL="/home/sprite/.fly"
     export PATH="$FLYCTL_INSTALL/bin:$PATH"
 
@@ -754,26 +794,10 @@ step_5_flyctl() {
         curl -L https://fly.io/install.sh | sh
     fi
 
-    # Add flyctl to PATH in .zshrc if not already present
-    if ! grep -q "FLYCTL_INSTALL" ~/.zshrc 2>/dev/null; then
-        echo "" >> ~/.zshrc
-        echo "# Fly.io CLI" >> ~/.zshrc
-        echo 'export FLYCTL_INSTALL="/home/sprite/.fly"' >> ~/.zshrc
-        echo 'export PATH="$FLYCTL_INSTALL/bin:$PATH"' >> ~/.zshrc
-        echo "Added flyctl to PATH in ~/.zshrc"
-    fi
-
-    # Save FLY_API_TOKEN to .zshrc first if provided (regardless of current auth status)
+    # Save FLY_API_TOKEN to ~/.sprite-config if provided (regardless of current auth status)
     if [ -n "$FLY_API_TOKEN" ]; then
-        if ! grep -q "export FLY_API_TOKEN=" ~/.zshrc 2>/dev/null; then
-            echo "" >> ~/.zshrc
-            echo "# Fly.io API token" >> ~/.zshrc
-            echo "export FLY_API_TOKEN=\"$FLY_API_TOKEN\"" >> ~/.zshrc
-            echo "Added FLY_API_TOKEN to ~/.zshrc"
-        else
-            sed -i "s|^export FLY_API_TOKEN=.*|export FLY_API_TOKEN=\"$FLY_API_TOKEN\"|" ~/.zshrc
-            echo "Updated FLY_API_TOKEN in ~/.zshrc"
-        fi
+        update_sprite_config "FLY_API_TOKEN" "$FLY_API_TOKEN"
+        echo "Saved FLY_API_TOKEN to ~/.sprite-config"
     fi
 
     # Authenticate Fly.io if not already logged in
@@ -781,7 +805,7 @@ step_5_flyctl() {
         echo "Fly.io already authenticated"
     elif [ -n "$FLY_API_TOKEN" ]; then
         # Token provided via config paste or environment
-        echo "Fly.io API token provided (already saved to .zshrc)"
+        echo "Fly.io API token provided (already saved to ~/.sprite-config)"
         # FLY_API_TOKEN is already exported, flyctl will use it automatically
         if ! flyctl auth whoami &>/dev/null; then
             echo "Warning: FLY_API_TOKEN provided but authentication failed"
@@ -821,17 +845,10 @@ step_6_sprites() {
         echo "Sprites CLI installed to /usr/local/bin/sprite"
     fi
 
-    # Save SPRITE_API_TOKEN to .zshrc first if provided (regardless of current auth status)
+    # Save SPRITE_API_TOKEN to ~/.sprite-config if provided (regardless of current auth status)
     if [ -n "$SPRITE_API_TOKEN" ]; then
-        if ! grep -q "export SPRITE_API_TOKEN=" ~/.zshrc 2>/dev/null; then
-            echo "" >> ~/.zshrc
-            echo "# Sprite CLI API token" >> ~/.zshrc
-            echo "export SPRITE_API_TOKEN=\"$SPRITE_API_TOKEN\"" >> ~/.zshrc
-            echo "Added SPRITE_API_TOKEN to ~/.zshrc"
-        else
-            sed -i "s|^export SPRITE_API_TOKEN=.*|export SPRITE_API_TOKEN=\"$SPRITE_API_TOKEN\"|" ~/.zshrc
-            echo "Updated SPRITE_API_TOKEN in ~/.zshrc"
-        fi
+        update_sprite_config "SPRITE_API_TOKEN" "$SPRITE_API_TOKEN"
+        echo "Saved SPRITE_API_TOKEN to ~/.sprite-config"
     fi
 
     # Authenticate Sprites CLI and org
@@ -1155,18 +1172,9 @@ step_9_tailscale_serve() {
     if [ -n "$TAILSCALE_SERVE_URL" ]; then
         echo "Tailscale HTTPS URL: $TAILSCALE_SERVE_URL"
 
-        # Add to ~/.zshrc for CLI access
-        if grep -q "^export TAILSCALE_SERVE_URL=" ~/.zshrc 2>/dev/null; then
-            sed -i "s|^export TAILSCALE_SERVE_URL=.*|export TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL|" ~/.zshrc
-            echo "  Updated TAILSCALE_SERVE_URL in ~/.zshrc"
-        else
-            echo "" >> ~/.zshrc
-            echo "# Tailscale serve URL (HTTPS)" >> ~/.zshrc
-            echo "export TAILSCALE_SERVE_URL=$TAILSCALE_SERVE_URL" >> ~/.zshrc
-            echo "  Added TAILSCALE_SERVE_URL to ~/.zshrc"
-        fi
-        # Export for current session
-        export TAILSCALE_SERVE_URL
+        # Save to ~/.sprite-config
+        update_sprite_config "TAILSCALE_SERVE_URL" "$TAILSCALE_SERVE_URL"
+        echo "  Saved TAILSCALE_SERVE_URL to ~/.sprite-config"
 
         # Add to sprite-mobile .env
         SPRITE_MOBILE_DIR="$HOME/.sprite-mobile"

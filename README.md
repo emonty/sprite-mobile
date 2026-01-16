@@ -97,6 +97,25 @@ The app is installed to `~/.sprite-mobile` (hidden directory). On each service s
 
 Once you have one sprite-mobile sprite set up, it can automatically create and configure new sprites with no manual intervention. This is useful for scaling your sprite fleet or letting Claude Code create new sprites on demand.
 
+### Configuration Management
+
+The setup script manages all authentication tokens and environment variables through `~/.sprite-config`. This file:
+
+- **Single source of truth** - All environment variables in one place
+- **Shell-agnostic** - Both bash and zsh source it automatically
+- **Simple format** - Easy-to-edit key=value pairs
+- **Portable** - Copy between sprites for easy setup replication
+
+**To replicate a sprite's configuration:**
+
+```bash
+# On the source sprite
+scp ~/.sprite-config new-sprite:~/.sprite-config
+
+# On the new sprite, the setup script will use it automatically
+./sprite-setup.sh all
+```
+
 ### One-Time Setup: Tailscale Reusable Auth Key
 
 For fully automated setup, you need a Tailscale reusable auth key. During first-time setup (step 7), choose option 2 and follow the prompts to create one. The key is saved and included in config exports.
@@ -189,6 +208,25 @@ Open `http://localhost:8081` in a browser to access the chat interface.
 
 ## Environment Variables
 
+### Configuration File
+
+All environment variables are managed through `~/.sprite-config`, which serves as the single source of truth. Both bash and zsh automatically source this file.
+
+**Format:**
+```bash
+# ~/.sprite-config
+GH_TOKEN=ghp_xxxxx
+CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxxxx
+FLY_API_TOKEN=FlyV1 xxxxx
+SPRITE_API_TOKEN=cl-sprites/org/id/token
+SPRITE_PUBLIC_URL=https://my-sprite.fly.dev
+TAILSCALE_SERVE_URL=https://my-sprite.tailxxxxx.ts.net
+SPRITE_MOBILE_REPO=https://github.com/org/sprite-mobile
+FLYCTL_INSTALL=/home/sprite/.fly
+```
+
+### Key Variables
+
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORT` | Server port | `8081` |
@@ -197,8 +235,12 @@ Open `http://localhost:8081` in a browser to access the chat interface.
 | `SPRITE_HOSTNAME` | Hostname for sprite network registration | `my-sprite` |
 | `SPRITE_NETWORK_CREDS` | Path to Tigris credentials file | `~/.sprite-network/credentials.json` |
 | `SPRITE_NETWORK_ORG` | Fly.io org for sprite network | `my-org` |
+| `GH_TOKEN` | GitHub Personal Access Token | `ghp_xxxxx` |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code OAuth token | `sk-ant-oat01-xxxxx` |
+| `FLY_API_TOKEN` | Fly.io API token | `FlyV1 xxxxx` |
+| `SPRITE_API_TOKEN` | Sprite CLI API token | `cl-sprites/org/id/token` |
 
-These are automatically configured by the setup script.
+These are automatically configured by the setup script and stored in `~/.sprite-config`.
 
 ## Architecture
 
