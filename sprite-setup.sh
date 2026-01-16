@@ -203,6 +203,14 @@ parse_pasted_config() {
                     export SPRITE_NETWORK_ORG="$value"
                     echo "  SPRITE_NETWORK_ORG: $value"
                     ;;
+                FLY_API_TOKEN)
+                    export FLY_API_TOKEN="$value"
+                    echo "  FLY_API_TOKEN: [set]"
+                    ;;
+                SPRITE_API_TOKEN)
+                    export SPRITE_API_TOKEN="$value"
+                    echo "  SPRITE_API_TOKEN: [set]"
+                    ;;
                 *)
                     # Unknown key, export anyway
                     export "$key"="$value"
@@ -236,6 +244,8 @@ EOF
     [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && echo "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$ANTHROPIC_API_KEY" ] && echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> "$SPRITE_CONFIG_FILE"
     [ -n "$TAILSCALE_AUTH_KEY" ] && echo "TAILSCALE_AUTH_KEY=$TAILSCALE_AUTH_KEY" >> "$SPRITE_CONFIG_FILE"
+    [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
+    [ -n "$SPRITE_API_TOKEN" ] && echo "SPRITE_API_TOKEN=$SPRITE_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
 
     # Sprite network credentials
     if [ -n "$SPRITE_NETWORK_S3_BUCKET" ]; then
@@ -688,6 +698,15 @@ step_5_flyctl() {
     # Authenticate Fly.io if not already logged in
     if flyctl auth whoami &>/dev/null; then
         echo "Fly.io already authenticated"
+    elif [ -n "$FLY_API_TOKEN" ]; then
+        # Token provided via config paste or environment
+        echo "Fly.io API token provided, exporting for use..."
+        # FLY_API_TOKEN is already exported, flyctl will use it automatically
+        if flyctl auth whoami &>/dev/null; then
+            echo "Fly.io authenticated successfully with token"
+        else
+            echo "Warning: FLY_API_TOKEN provided but authentication failed"
+        fi
     elif [ "$NON_INTERACTIVE" = "true" ]; then
         if [ -d "$HOME/.fly" ]; then
             echo "Fly.io credentials installed (verifying...)"
@@ -698,7 +717,7 @@ step_5_flyctl() {
             fi
         else
             echo "Warning: Fly.io not authenticated and no credentials provided"
-            echo "  Run interactively or provide credentials in config"
+            echo "  Run interactively or provide FLY_API_TOKEN in config"
         fi
     else
         echo "Authenticating Fly.io..."
@@ -726,9 +745,15 @@ step_6_sprites() {
     # Authenticate Sprites CLI and org
     if [ -d "$HOME/.sprite" ]; then
         echo "Sprites CLI already authenticated"
+    elif [ -n "$SPRITE_API_TOKEN" ]; then
+        # Token provided via config paste or environment
+        echo "Sprite API token provided, exporting for use..."
+        # SPRITE_API_TOKEN is already exported, sprite CLI will use it if supported
+        # Note: sprite CLI may still require interactive login if token auth not implemented
+        echo "Note: Sprite CLI token-based auth depends on CLI version support"
     elif [ "$NON_INTERACTIVE" = "true" ]; then
         echo "Warning: Sprites CLI not authenticated"
-        echo "  Run interactively to authenticate"
+        echo "  Run interactively or provide SPRITE_API_TOKEN in config"
     else
         echo "Logging in to Sprites CLI..."
         echo "Follow the prompts to authenticate:"
@@ -1414,6 +1439,8 @@ show_help() {
     echo "  ANTHROPIC_API_KEY        Direct API key (uses API billing, not subscription)"
     echo "  GH_TOKEN                 GitHub Personal Access Token"
     echo "  TAILSCALE_AUTH_KEY       Tailscale reusable auth key"
+    echo "  FLY_API_TOKEN            Fly.io API token (from 'flyctl auth token')"
+    echo "  SPRITE_API_TOKEN         Sprite CLI API token (optional)"
     echo ""
     echo "Example with tokens:"
     echo "  GH_TOKEN=ghp_xxx CLAUDE_CODE_OAUTH_TOKEN=xxx $0 3 4"

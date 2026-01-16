@@ -18,6 +18,10 @@ CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Tailscale Auth Key (enables automated setup)
 # Create at: https://login.tailscale.com/admin/settings/keys - check "Reusable"
 TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Fly.io API Token (get with: flyctl auth token)
+#FLY_API_TOKEN=fo1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Sprite CLI API Token (optional, for non-interactive sprite CLI auth)
+#SPRITE_API_TOKEN=sprite_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Sprite Network S3 credentials (optional, from flyctl storage dashboard)
 #SPRITE_NETWORK_S3_BUCKET=sprite-network-your-org
 #SPRITE_NETWORK_S3_ACCESS_KEY=tid_xxxxxxxxxxxxxxxxxxxx
