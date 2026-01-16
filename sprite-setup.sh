@@ -1131,10 +1131,27 @@ step_8_sprite_mobile() {
     fi
 
     echo "Starting sprite-mobile service on port $APP_PORT..."
-    sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
-      \"cmd\": \"bun\",
-      \"args\": [\"--hot\", \"run\", \"$SPRITE_MOBILE_DIR/server.ts\"]
-    }"
+
+    # Build environment variables for the service
+    SERVICE_ENV=""
+    [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && SERVICE_ENV="${SERVICE_ENV}CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN,"
+    [ -n "$ANTHROPIC_API_KEY" ] && SERVICE_ENV="${SERVICE_ENV}ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY,"
+    [ -n "$GH_TOKEN" ] && SERVICE_ENV="${SERVICE_ENV}GH_TOKEN=$GH_TOKEN,"
+    # Remove trailing comma
+    SERVICE_ENV="${SERVICE_ENV%,}"
+
+    if [ -n "$SERVICE_ENV" ]; then
+        sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
+          \"cmd\": \"bun\",
+          \"args\": [\"--hot\", \"run\", \"$SPRITE_MOBILE_DIR/server.ts\"],
+          \"env\": \"$SERVICE_ENV\"
+        }"
+    else
+        sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
+          \"cmd\": \"bun\",
+          \"args\": [\"--hot\", \"run\", \"$SPRITE_MOBILE_DIR/server.ts\"]
+        }"
+    fi
 }
 
 step_9_tailscale_serve() {
