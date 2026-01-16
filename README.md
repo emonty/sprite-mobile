@@ -24,6 +24,7 @@ sprite-mobile gives you a progressive web app chat UI for accessing Claude Code 
 - [Configuration](#configuration)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ## Prerequisites
 
@@ -415,3 +416,7 @@ Restart if needed:
 ```bash
 tailscale serve --bg 8081
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
