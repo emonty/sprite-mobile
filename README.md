@@ -1,11 +1,8 @@
 # Sprite Mobile
 
-A mobile-friendly web interface for chatting with Claude Code running on a [Sprite](https://sprites.dev). Supports multiple concurrent chat sessions, image uploads, and persistent message history.
+> **⚠️ This project is a work in progress and is subject to change at any time. Features, APIs, and behavior may be modified or removed without notice.**
 
-<p>
-  <img src="docs/screenshot-chat.png" width="280" alt="Chat View">
-  <img src="docs/screenshot-sidebar.png" width="280" alt="Session Sidebar">
-</p>
+sprite-mobile gives you a progressive web app chat UI for accessing Claude Code running in YOLO mode on a [Sprite](https://sprites.dev), an ideal vibe-coding interface on your phone. It allows input by text, voice, and image, persists sessions across clients, and seamlessly networks with your other sprites through Tailscale.
 
 ## Prerequisites
 
@@ -21,6 +18,7 @@ If running elsewhere, you'll need to install these manually and authenticate Cla
 - **Multiple Chat Sessions**: Create and manage multiple independent chat sessions, each with its own Claude Code process
 - **Persistent History**: Messages are saved to disk and survive server restarts
 - **Session Resume**: Reconnecting to a session resumes the existing Claude conversation
+- **CLI Session Attachment**: Attach to existing Claude CLI sessions started in the terminal and import their history
 - **Image Support**: Upload and send images to Claude for analysis (auto-resized for API limits)
 - **Real-time Streaming**: Responses stream in real-time via WebSocket
 - **Activity Indicators**: See exactly what Claude is doing (reading files, running commands, searching)
@@ -273,14 +271,17 @@ All data is stored in the `data/` directory:
 | DELETE | `/api/sessions/:id` | Delete session |
 | GET | `/api/sessions/:id/messages` | Get message history |
 | POST | `/api/sessions/:id/regenerate-title` | Regenerate session title |
+| GET | `/api/claude-sessions` | Discover Claude CLI sessions from `~/.claude/projects/` |
 | POST | `/api/upload?session={id}` | Upload an image |
 | GET | `/api/uploads/:sessionId/:filename` | Retrieve uploaded image |
 | GET | `/api/sprites` | List saved Sprite profiles |
 | POST | `/api/sprites` | Add a Sprite profile |
+| PATCH | `/api/sprites/:id` | Update a Sprite profile |
 | DELETE | `/api/sprites/:id` | Remove a Sprite profile |
 | GET | `/api/network/status` | Check if sprite network is configured |
 | GET | `/api/network/sprites` | Discover sprites in the network |
 | POST | `/api/network/heartbeat` | Manual heartbeat trigger |
+| DELETE | `/api/network/sprites/:hostname` | Remove a sprite from the network |
 
 ### WebSocket
 
@@ -318,6 +319,38 @@ A separate WebSocket endpoint at `/ws/keepalive` keeps the Sprite awake while th
 4. **Disconnection**: Claude process continues running for 30 minutes
 5. **Reconnection**: Rejoins the existing process if still alive, otherwise resumes via Claude's session ID
 6. **Cleanup**: Idle processes with no clients are terminated after 30 minutes
+
+## CLI Session Attachment
+
+Sprite Mobile can attach to existing Claude CLI sessions that were started in the terminal. This allows you to:
+
+1. Continue conversations that you started on the command line
+2. Import the full conversation history into the web interface
+3. Switch between CLI and web interface seamlessly
+
+**How it works:**
+
+- Click the terminal icon in the sidebar (next to "New Chat")
+- The app discovers sessions from `~/.claude/projects/` directory
+- Select a session to import its history and resume the conversation
+- The session continues with the same Claude session ID, maintaining full context
+
+**Session discovery format:**
+
+Claude CLI stores sessions in `~/.claude/projects/{cwd}/{sessionId}.jsonl`. The app:
+- Scans all working directories under the projects folder
+- Parses `.jsonl` files to extract message history
+- Shows the first user message as a preview
+- Filters out empty sessions and internal tool messages
+
+**Important caveat:**
+
+When you attach to a CLI session, Sprite Mobile spawns a **new** Claude Code process that resumes the conversation using the session ID. This means:
+
+- The web interface and CLI are running separate processes
+- Any work done in the web interface is saved to the shared session history
+- If you later try to resume the same session from the CLI while the web session is still active, both processes will be writing to the same session file
+- **Best practice**: Finish your work in one interface before switching to the other to avoid potential conflicts
 
 ## Configuration
 
