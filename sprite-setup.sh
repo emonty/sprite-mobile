@@ -96,6 +96,12 @@ export_config() {
         tailscale_auth_key=$(cat "$HOME/.config/sprite/tailscale-auth-key")
     fi
 
+    # Read Claude token file if available (from token-based auth)
+    local claude_token=""
+    if [ -f "$HOME/.config/claude-code/token" ]; then
+        claude_token=$(base64 -w0 "$HOME/.config/claude-code/token" 2>/dev/null || base64 "$HOME/.config/claude-code/token" | tr -d '\n')
+    fi
+
     # Output JSON
     # NOTE: hostname and public_url are NOT included - they are unique per sprite
     cat << EXPORT_EOF
@@ -106,6 +112,7 @@ export_config() {
   },
   "credentials": {
     "claude": "$claude_creds",
+    "claude_token": "$claude_token",
     "github": "$github_creds",
     "flyctl": "$flyctl_creds",
     "sprite_network": "$sprite_network_creds"
@@ -156,6 +163,20 @@ load_config() {
         mkdir -p "$HOME/.claude"
         echo "$claude_creds" | base64 -d > "$HOME/.claude/.credentials.json"
         chmod 600 "$HOME/.claude/.credentials.json"
+    fi
+
+    local claude_token=$(json_get_nested "$config" "credentials" "claude_token")
+    if [ -n "$claude_token" ]; then
+        echo "  Installing Claude token..." >&2
+        mkdir -p "$HOME/.config/claude-code"
+        echo "$claude_token" | base64 -d > "$HOME/.config/claude-code/token"
+        chmod 600 "$HOME/.config/claude-code/token"
+        # Add source line to zshrc if not present
+        if ! grep -q "source.*claude-code/token" ~/.zshrc 2>/dev/null; then
+            echo "" >> ~/.zshrc
+            echo "# Claude Code token" >> ~/.zshrc
+            echo "[ -f \"\$HOME/.config/claude-code/token\" ] && source \"\$HOME/.config/claude-code/token\"" >> ~/.zshrc
+        fi
     fi
 
     local github_creds=$(json_get_nested "$config" "credentials" "github")
