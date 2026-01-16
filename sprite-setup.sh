@@ -747,13 +747,18 @@ step_6_sprites() {
         echo "Sprites CLI already authenticated"
     elif [ -n "$SPRITE_API_TOKEN" ]; then
         # Token provided via config paste or environment
-        echo "Sprite API token provided, exporting for use..."
-        # SPRITE_API_TOKEN is already exported, sprite CLI will use it if supported
-        # Note: sprite CLI may still require interactive login if token auth not implemented
-        echo "Note: Sprite CLI token-based auth depends on CLI version support"
+        echo "Sprite API token provided, setting up authentication..."
+        sprite auth setup --token "$SPRITE_API_TOKEN"
+        if [ $? -eq 0 ]; then
+            echo "Sprites CLI authenticated successfully with token"
+        else
+            echo "Warning: Failed to authenticate with provided token"
+            echo "  Token format should be: org-slug/org-id/token-id/token-value"
+        fi
     elif [ "$NON_INTERACTIVE" = "true" ]; then
         echo "Warning: Sprites CLI not authenticated"
         echo "  Run interactively or provide SPRITE_API_TOKEN in config"
+        echo "  Token format: org-slug/org-id/token-id/token-value"
     else
         echo "Logging in to Sprites CLI..."
         echo "Follow the prompts to authenticate:"

@@ -20,8 +20,8 @@ CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TAILSCALE_AUTH_KEY=tskey-auth-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Fly.io API Token (get with: flyctl auth token)
 #FLY_API_TOKEN=fo1_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-# Sprite CLI API Token (optional, for non-interactive sprite CLI auth)
-#SPRITE_API_TOKEN=sprite_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Sprite CLI API Token (format: org-slug/org-id/token-id/token-value)
+#SPRITE_API_TOKEN=my-org/abc123/token-id/token-value
 # Sprite Network S3 credentials (optional, from flyctl storage dashboard)
 #SPRITE_NETWORK_S3_BUCKET=sprite-network-your-org
 #SPRITE_NETWORK_S3_ACCESS_KEY=tid_xxxxxxxxxxxxxxxxxxxx
