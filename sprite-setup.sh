@@ -283,25 +283,19 @@ prompt_for_config() {
     echo "  GIT_USER_NAME=Your Name"
     echo "  GIT_USER_EMAIL=you@example.com"
     echo ""
-    echo "Type 'END' on a line by itself when done, or just press Enter to skip:"
+    read -p "Paste config? [y/N]: " want_config </dev/tty
+    if [ "$want_config" != "y" ] && [ "$want_config" != "Y" ]; then
+        return
+    fi
+
+    echo ""
+    echo "Paste your config below (will auto-detect end after 1 second of no input):"
     echo ""
 
     local config=""
-    local first_line=true
 
-    # Read from /dev/tty explicitly to avoid consuming stdin
-    while IFS= read -r line </dev/tty; do
-        # Check for END marker or empty first line (skip)
-        if [ "$line" = "END" ]; then
-            break
-        fi
-
-        if [ -z "$line" ] && [ "$first_line" = "true" ]; then
-            # Empty line on first input = skip
-            break
-        fi
-
-        first_line=false
+    # Read from /dev/tty with timeout to detect end of paste
+    while IFS= read -r -t 1 line </dev/tty 2>/dev/null; do
         config+="$line"$'\n'
     done
 
