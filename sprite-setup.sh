@@ -1546,7 +1546,7 @@ show_help() {
     echo "  $0 --config config.json 1-8  # Run steps 1-8 non-interactively"
     echo ""
     echo "Orchestrating new sprites from an existing sprite:"
-    echo "  $0 --config config.json --name my-sprite --url https://my-sprite.fly.dev all"
+    echo "  $0 --config config.json --name my-sprite --url https://my-sprite.sprites.app all"
     echo ""
     echo "Non-interactive mode:"
     echo "  Use --export on a configured sprite to generate a config file,"

@@ -76,7 +76,7 @@ Public URL (https://sprite.fly.dev)
 | Path | URL | Auth | HTTPS | PWA |
 |------|-----|------|-------|-----|
 | Public | `https://sprite.fly.dev` | Tailnet Gate | Yes | Redirects |
-| Tailscale Serve | `https://sprite.ts.net` | Tailnet only | Yes | Yes |
+| Tailscale Serve | `https://my-sprite.ts.net` | Tailnet only | Yes | Yes |
 | Tailscale IP | `http://100.x.x.x:8081` | Tailnet only | No | No |
 
 **Recommended**: Bookmark the public URL. It wakes the sprite and auto-redirects to the Tailscale HTTPS URL when you're on the tailnet.
@@ -196,7 +196,7 @@ sprite-setup.sh --export > config.json
 sprite-setup.sh --config config.json all
 
 # Run with explicit name/URL for new sprite
-sprite-setup.sh --config config.json --name my-sprite --url https://my-sprite.fly.dev all
+sprite-setup.sh --config config.json --name my-sprite --url https://my-sprite.sprites.app all
 
 # Read config from stdin
 cat config.json | sprite-setup.sh --config - --name my-sprite all
@@ -241,7 +241,7 @@ GH_TOKEN=ghp_xxxxx
 CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxxxx
 FLY_API_TOKEN=fm2_xxxxx
 SPRITE_API_TOKEN=your-org-name/org/id/token
-SPRITE_PUBLIC_URL=https://my-sprite.fly.dev
+SPRITE_PUBLIC_URL=https://my-sprite.sprites.app
 TAILSCALE_SERVE_URL=https://my-sprite.tailxxxxx.ts.net
 SPRITE_MOBILE_REPO=https://github.com/org/sprite-mobile
 ```
@@ -251,7 +251,7 @@ SPRITE_MOBILE_REPO=https://github.com/org/sprite-mobile
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORT` | Server port | `8081` |
-| `SPRITE_PUBLIC_URL` | Public URL for waking sprite | `https://my-sprite.fly.dev` |
+| `SPRITE_PUBLIC_URL` | Public URL for waking sprite | `https://my-sprite.sprites.app` |
 | `TAILSCALE_SERVE_URL` | Tailscale HTTPS URL | `https://my-sprite.ts.net` |
 | `SPRITE_HOSTNAME` | Hostname for sprite network registration | `my-sprite` |
 | `SPRITE_NETWORK_CREDS` | Path to Tigris credentials file | `~/.sprite-network/credentials.json` |
