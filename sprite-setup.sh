@@ -280,19 +280,91 @@ step_3_claude() {
     echo ""
     echo "=== Step 3: Claude CLI Authentication ==="
 
+    CLAUDE_TOKEN_FILE="$HOME/.config/claude-code/token"
+
+    # Helper to save token to secured file and source from zshrc
+    save_claude_token() {
+        local token_type="$1"  # "oauth" or "apikey"
+        local token_value="$2"
+
+        mkdir -p "$(dirname "$CLAUDE_TOKEN_FILE")"
+
+        if [ "$token_type" = "oauth" ]; then
+            echo "export CLAUDE_CODE_OAUTH_TOKEN=\"$token_value\"" > "$CLAUDE_TOKEN_FILE"
+        else
+            echo "export ANTHROPIC_API_KEY=\"$token_value\"" > "$CLAUDE_TOKEN_FILE"
+        fi
+        chmod 600 "$CLAUDE_TOKEN_FILE"
+
+        # Add source line to zshrc if not present
+        if ! grep -q "source.*claude-code/token" ~/.zshrc 2>/dev/null; then
+            echo "" >> ~/.zshrc
+            echo "# Claude Code token" >> ~/.zshrc
+            echo "[ -f \"$CLAUDE_TOKEN_FILE\" ] && source \"$CLAUDE_TOKEN_FILE\"" >> ~/.zshrc
+        fi
+
+        echo "Token saved to $CLAUDE_TOKEN_FILE (sourced from ~/.zshrc)"
+    }
+
     if claude auth status &>/dev/null; then
         echo "Claude CLI already authenticated, skipping..."
     elif [ "$NON_INTERACTIVE" = "true" ]; then
-        if [ -f "$HOME/.claude/.credentials.json" ]; then
+        if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "Claude OAuth token provided via environment"
+            save_claude_token "oauth" "$CLAUDE_CODE_OAUTH_TOKEN"
+        elif [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "Anthropic API key provided via environment"
+            echo "  Note: This uses API billing, not your subscription"
+            save_claude_token "apikey" "$ANTHROPIC_API_KEY"
+        elif [ -f "$HOME/.claude/.credentials.json" ]; then
             echo "Claude credentials file installed (will be validated on first use)"
         else
             echo "Warning: Claude not authenticated and no credentials provided"
             echo "  Run interactively or provide credentials in config"
         fi
     else
-        echo "Starting Claude CLI authentication..."
-        echo "Follow the prompts to authenticate:"
-        claude
+        echo ""
+        echo "Authentication options:"
+        echo "  1) OAuth token (preserves Pro/Max subscription, recommended)"
+        echo "  2) API key (uses direct API billing)"
+        echo "  3) Interactive login (opens browser)"
+        echo ""
+        read -p "Choice [1/2/3]: " claude_choice
+
+        case "$claude_choice" in
+            1)
+                echo ""
+                echo "To generate an OAuth token, run 'claude setup-token' on a machine"
+                echo "where you're already logged in, then paste the token here."
+                echo ""
+                read -p "OAuth token: " input_token
+                if [ -n "$input_token" ]; then
+                    export CLAUDE_CODE_OAUTH_TOKEN="$input_token"
+                    save_claude_token "oauth" "$input_token"
+                else
+                    echo "No token provided, falling back to interactive login..."
+                    claude
+                fi
+                ;;
+            2)
+                echo ""
+                echo "Enter your Anthropic API key (starts with sk-ant-):"
+                read -p "API key: " input_key
+                if [ -n "$input_key" ]; then
+                    export ANTHROPIC_API_KEY="$input_key"
+                    save_claude_token "apikey" "$input_key"
+                    echo "Note: This uses direct API billing, not your subscription"
+                else
+                    echo "No key provided, falling back to interactive login..."
+                    claude
+                fi
+                ;;
+            *)
+                echo "Starting Claude CLI authentication..."
+                echo "Follow the prompts to authenticate:"
+                claude
+                ;;
+        esac
     fi
 }
 
@@ -306,7 +378,16 @@ step_4_github() {
         gh auth setup-git 2>/dev/null || true
         echo "Git credential helper configured"
     elif [ "$NON_INTERACTIVE" = "true" ]; then
-        if [ -f "$HOME/.config/gh/hosts.yml" ]; then
+        if [ -n "$GH_TOKEN" ]; then
+            echo "GitHub token provided via environment, authenticating..."
+            echo "$GH_TOKEN" | gh auth login --with-token
+            gh auth setup-git 2>/dev/null || true
+            if gh auth status &>/dev/null; then
+                echo "GitHub CLI authenticated successfully"
+            else
+                echo "Warning: GitHub authentication failed with provided token"
+            fi
+        elif [ -f "$HOME/.config/gh/hosts.yml" ]; then
             echo "GitHub credentials file installed (verifying...)"
             # Setup git credential helper first
             gh auth setup-git 2>/dev/null || true
@@ -320,20 +401,58 @@ step_4_github() {
             echo "  Run interactively or provide credentials in config"
         fi
     else
-        echo "Starting GitHub CLI authentication..."
-        # Clear any stale state that might interfere
-        rm -f "$HOME/.config/gh/hosts.yml" 2>/dev/null
-        mkdir -p "$HOME/.config/gh"
+        echo ""
+        echo "Authentication options:"
+        echo "  1) Personal Access Token (non-interactive, recommended)"
+        echo "  2) Interactive login (opens browser)"
+        echo ""
+        read -p "Choice [1/2]: " gh_choice
 
-        # Flush any leftover stdin from previous steps
-        read -t 0.1 -n 10000 discard 2>/dev/null || true
+        case "$gh_choice" in
+            1)
+                echo ""
+                echo "Create a Personal Access Token at:"
+                echo "  https://github.com/settings/tokens"
+                echo ""
+                echo "Required scopes: repo, read:org, gist"
+                echo "(For fine-grained tokens, grant Repository and Organization read access)"
+                echo ""
+                read -p "GitHub token: " input_token
+                if [ -n "$input_token" ]; then
+                    echo "$input_token" | gh auth login --with-token
+                    gh auth setup-git 2>/dev/null || true
+                    if gh auth status &>/dev/null; then
+                        echo "GitHub CLI authenticated successfully"
+                        echo "Git credential helper configured"
+                    else
+                        echo "Authentication failed. Token may be invalid or missing scopes."
+                        echo "Falling back to interactive login..."
+                        gh auth login </dev/tty
+                        gh auth setup-git 2>/dev/null || true
+                    fi
+                else
+                    echo "No token provided, falling back to interactive login..."
+                    gh auth login </dev/tty
+                    gh auth setup-git 2>/dev/null || true
+                fi
+                ;;
+            *)
+                echo "Starting GitHub CLI authentication..."
+                # Clear any stale state that might interfere
+                rm -f "$HOME/.config/gh/hosts.yml" 2>/dev/null
+                mkdir -p "$HOME/.config/gh"
 
-        echo "Follow the prompts to authenticate:"
-        gh auth login </dev/tty
+                # Flush any leftover stdin from previous steps
+                read -t 0.1 -n 10000 discard 2>/dev/null || true
 
-        # Setup git credential helper after auth
-        gh auth setup-git 2>/dev/null || true
-        echo "Git credential helper configured"
+                echo "Follow the prompts to authenticate:"
+                gh auth login </dev/tty
+
+                # Setup git credential helper after auth
+                gh auth setup-git 2>/dev/null || true
+                echo "Git credential helper configured"
+                ;;
+        esac
     fi
 }
 
@@ -924,8 +1043,6 @@ show_summary() {
     echo "To check service status:"
     echo "  sprite-env services list"
     echo ""
-    echo "NOTE: Log out and back in for environment variables to be available in new sessions."
-    echo ""
 }
 
 # ============================================
@@ -1056,6 +1173,15 @@ show_help() {
     echo "  then use --config on a new sprite to apply the same configuration."
     echo "  Use --name and --url to set the target sprite's identity."
     echo "  Tailscale requires a reusable auth key for fully automated setup."
+    echo ""
+    echo "Environment variables for non-interactive auth:"
+    echo "  CLAUDE_CODE_OAUTH_TOKEN  OAuth token from 'claude setup-token' (preserves subscription)"
+    echo "  ANTHROPIC_API_KEY        Direct API key (uses API billing, not subscription)"
+    echo "  GH_TOKEN                 GitHub Personal Access Token"
+    echo "  TAILSCALE_AUTH_KEY       Tailscale reusable auth key"
+    echo ""
+    echo "Example with tokens:"
+    echo "  GH_TOKEN=ghp_xxx CLAUDE_CODE_OAUTH_TOKEN=xxx $0 3 4"
     echo ""
 }
 
