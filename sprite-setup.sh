@@ -1281,8 +1281,29 @@ const html = \`<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <iframe src="\${TAILSCALE_URL}" allow="camera; microphone"></iframe>
+  <iframe id="app-frame" allow="camera; microphone"></iframe>
   <script>
+    // Set iframe src with hash from current URL
+    const tailscaleUrl = "\${TAILSCALE_URL}";
+    const hash = window.location.hash;
+    const iframe = document.getElementById('app-frame');
+    iframe.src = tailscaleUrl + hash;
+
+    // Update iframe when outer hash changes
+    window.addEventListener('hashchange', () => {
+      const newHash = window.location.hash;
+      iframe.contentWindow.postMessage({ type: 'hashchange', hash: newHash }, '*');
+    });
+
+    // Update outer URL when iframe hash changes
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'hashchange' && event.data.hash !== undefined) {
+        if (window.location.hash !== event.data.hash) {
+          window.location.hash = event.data.hash;
+        }
+      }
+    });
+
     // Open WebSocket connection to keep sprite awake
     function connectKeepalive() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
