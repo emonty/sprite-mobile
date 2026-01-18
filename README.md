@@ -94,21 +94,15 @@ Public URL (https://sprite.fly.dev)
 
 ## Sprite Setup
 
-To set up a fresh Sprite with all dependencies, authentication, and services:
+To set up a fresh Sprite with all dependencies, authentication, and services, download and run the setup script:
 
-1. First, get your Sprite's public URL (run this from your local machine):
-   ```bash
-   sprite url update --auth public -s YOUR_SPRITE_NAME
-   ```
-
-2. Then, on the Sprite, download and run the setup script:
-   ```bash
-   curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o sprite-setup.sh && chmod +x sprite-setup.sh && ./sprite-setup.sh
-   ```
+```bash
+curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o sprite-setup.sh && chmod +x sprite-setup.sh && ./sprite-setup.sh
+```
 
 The script will:
 1. Install Sprites CLI and authenticate
-2. Configure hostname, git user, URLs, and repo (with auto-detection of public URL)
+2. Configure hostname, git user, URLs, and repo (auto-detects public URL from sprite metadata)
 3. Authenticate Claude CLI
 4. Authenticate GitHub CLI
 5. Install Fly.io CLI
@@ -122,8 +116,6 @@ The script will:
 The script is idempotent and can be safely re-run.
 
 The app is installed to `~/.sprite-mobile` (hidden directory). On each service start, it attempts to auto-update via `git pull` so all sprites receive updates when they wake up.
-
-**Note:** The setup script has experimental support for non-interactive setup via config file (see "Setup Script Options" below), but this approach is currently buggy. The preferred setup method at the moment is the interactive approach shown above.
 
 **Note:** During authentication:
 - Claude CLI may start a new Claude session after completing. Just type `exit` or press `Ctrl+C` to exit and continue.
