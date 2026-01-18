@@ -130,94 +130,124 @@ The app is installed to `~/.sprite-mobile` (hidden directory). On each service s
 
 ## Sprite Orchestration
 
-> **⚠️ Experimental:** This feature is experimental and may not work reliably.
+Once you have one sprite-mobile sprite set up, it can automatically create and configure new sprites with a single command. This is useful for scaling your sprite fleet or letting Claude Code create new sprites on demand.
 
-Once you have one sprite-mobile sprite set up, it can automatically create and configure new sprites with no manual intervention. This is useful for scaling your sprite fleet or letting Claude Code create new sprites on demand.
+### Prerequisites
 
-### Configuration Management
+For fully automated sprite creation, you need:
 
-The setup script manages all authentication tokens and environment variables through `~/.sprite-config`. This file:
+1. **~/.sprite-config file** - Created automatically during initial setup
+2. **Tailscale reusable auth key** - Must be saved in your `~/.sprite-config`
+3. **Authenticated CLI tools** - Claude, GitHub, Fly.io, and Sprite CLI
 
-- **Single source of truth** - All environment variables in one place
-- **Shell-agnostic** - Both bash and zsh source it automatically
-- **Simple format** - Easy-to-edit key=value pairs
-- **Portable** - Copy between sprites for easy setup replication
+**One-Time Setup: Tailscale Reusable Auth Key**
 
-**To replicate a sprite's configuration:**
+Create a reusable auth key and add it to your `~/.sprite-config`:
 
-```bash
-# On the source sprite
-scp ~/.sprite-config new-sprite:~/.sprite-config
-
-# On the new sprite, the setup script will use it automatically
-./sprite-setup.sh all
-```
-
-### One-Time Setup: Tailscale Reusable Auth Key
-
-For fully automated setup, you need a Tailscale reusable auth key. During first-time setup (step 7), choose option 2 and follow the prompts to create one. The key is saved and included in config exports.
-
-Alternatively, create one manually:
 1. Go to https://login.tailscale.com/admin/settings/keys
 2. Click "Generate auth key"
 3. Check "Reusable"
-4. Save the key to `~/.sprite-mobile/.tailscale-auth-key`
+4. Copy the key and add it to `~/.sprite-config`:
+   ```bash
+   TAILSCALE_AUTH_KEY=tskey-auth-xxxxx
+   ```
 
-### Creating a New Sprite from an Existing One
+### Creating a New Sprite (One Command)
 
-From your existing sprite-mobile sprite:
+From any existing sprite-mobile sprite:
 
 ```bash
-# Set the new sprite's name
-NEW_SPRITE="my-new-sprite"
+~/.sprite-mobile/create-sprite.sh my-new-sprite
+```
 
-# 1. Create the sprite
-sprite create $NEW_SPRITE
+**That's it!** This single command will:
 
-# 2. Make its URL public
-sprite url update --auth public -s $NEW_SPRITE
+1. Create a new sprite with the given name
+2. Make its URL public
+3. Transfer your `.sprite-config` to the new sprite (excluding sprite-specific URLs)
+4. Download and run the full setup script non-interactively
+5. Verify all services are running
 
-# 3. Export config and run setup on the new sprite
-~/.sprite-mobile/sprite-setup.sh --export | \
-  sprite -s $NEW_SPRITE exec bash -c "
-    curl -fsSL https://raw.githubusercontent.com/superfly/sprite-mobile/main/sprite-setup.sh -o ~/sprite-setup.sh
-    chmod +x ~/sprite-setup.sh
-    ~/sprite-setup.sh --config - --name $NEW_SPRITE all
-  "
+**Example output:**
+
+```
+Creating and Configuring Sprite
+Target sprite: my-new-sprite
+
+Step 1: Creating sprite...
+  Created sprite: my-new-sprite
+
+Step 2: Making URL public...
+  Public URL: https://my-new-sprite.fly.dev
+
+Step 3: Transferring configuration...
+  Transferred ~/.sprite-config (excluded sprite-specific URLs)
+
+Step 4: Downloading setup script...
+  Downloaded sprite-setup.sh
+
+Step 5: Running setup script (this may take 3-5 minutes)...
+  [Setup runs automatically with your credentials]
+
+Setup Complete!
 ```
 
 ### What Gets Transferred
 
-The exported config includes:
+The script transfers your `~/.sprite-config` which includes:
 - Git configuration (user.name, user.email)
-- Claude CLI credentials
-- GitHub CLI credentials
-- Fly.io CLI credentials
-- Sprite Network credentials (if configured)
-- Tailscale reusable auth key (if configured)
-- Port settings
+- Claude CLI OAuth token
+- GitHub CLI token
+- Fly.io API token
+- Sprite API token
+- Tailscale reusable auth key
+- Sprite Network credentials
 
-The following are **not** transferred (they're unique per sprite):
-- Hostname (set via `--name`)
-- Public URL (derived from name or set via `--url`)
+The following are **unique per sprite** and NOT transferred:
+- `SPRITE_PUBLIC_URL` - Stripped during transfer, set correctly for the new sprite
+- `TAILSCALE_SERVE_URL` - Stripped during transfer, generated during setup
+- Hostname - Set to the sprite name automatically
 
-### Setup Script Options
+### How It Works
+
+The `create-sprite.sh` script uses a defense-in-depth approach:
+
+1. **Filters sprite-specific values** during config transfer:
+   ```bash
+   # Strip SPRITE_PUBLIC_URL and TAILSCALE_SERVE_URL
+   grep -v '^SPRITE_PUBLIC_URL=' ~/.sprite-config | \
+   grep -v '^TAILSCALE_SERVE_URL=' > filtered-config
+   ```
+
+2. **Passes correct values** to setup script:
+   ```bash
+   sprite exec -- ./sprite-setup.sh --name 'my-new-sprite' --url 'https://my-new-sprite.fly.dev' all
+   ```
+
+This ensures the new sprite always gets the correct public URL and hostname, even if the source config contained different values.
+
+### Manual Alternative
+
+If you prefer manual control or need to customize the process:
 
 ```bash
-# Export current sprite's config
-sprite-setup.sh --export > config.json
+# 1. Create sprite
+sprite create my-new-sprite
 
-# Run non-interactively with config file
-sprite-setup.sh --config config.json all
+# 2. Make URL public and get the URL
+sprite url update --auth public -s my-new-sprite
+PUBLIC_URL=$(sprite api /v1/sprites/my-new-sprite | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*: *"\([^"]*\)".*/\1/')
 
-# Run with explicit name/URL for new sprite
-sprite-setup.sh --config config.json --name my-sprite --url https://my-sprite.sprites.app all
+# 3. Transfer config (excluding sprite-specific URLs)
+grep -v '^SPRITE_PUBLIC_URL=' ~/.sprite-config | grep -v '^TAILSCALE_SERVE_URL=' | \
+  sprite -s my-new-sprite exec -- cat > ~/.sprite-config
 
-# Read config from stdin
-cat config.json | sprite-setup.sh --config - --name my-sprite all
-
-# Run specific steps only
-sprite-setup.sh --config config.json --name my-sprite 1-4 8 11
+# 4. Download and run setup
+sprite -s my-new-sprite exec -- bash -c "
+  curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o ~/sprite-setup.sh
+  chmod +x ~/sprite-setup.sh
+  ~/sprite-setup.sh --name my-new-sprite --url '$PUBLIC_URL' all
+"
 ```
 
 ### Letting Claude Create Sprites
@@ -226,7 +256,7 @@ With orchestration configured, you can simply tell Claude Code:
 
 > "Create a new sprite-mobile sprite called test-sprite"
 
-Claude will handle the entire process automatically using the commands above.
+Claude will use `create-sprite.sh` to handle the entire process automatically.
 
 ## Quick Start
 
