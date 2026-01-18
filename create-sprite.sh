@@ -72,15 +72,16 @@ echo ""
 
 # Step 3: Transfer .sprite-config
 echo "Step 3: Transferring configuration..."
-# Create a temporary file with the config (without trailing control chars)
+# Create a temporary file with the config, excluding sprite-specific values
 TEMP_CONFIG=$(mktemp)
-head -n -1 "$HOME/.sprite-config" 2>/dev/null > "$TEMP_CONFIG" || cat "$HOME/.sprite-config" > "$TEMP_CONFIG"
+# Strip SPRITE_PUBLIC_URL and TAILSCALE_SERVE_URL (unique per sprite)
+grep -v '^SPRITE_PUBLIC_URL=' "$HOME/.sprite-config" 2>/dev/null | grep -v '^TAILSCALE_SERVE_URL=' > "$TEMP_CONFIG" || cat "$HOME/.sprite-config" > "$TEMP_CONFIG"
 # Encode as base64 to avoid shell escaping issues
 CONFIG_B64=$(base64 -w0 "$TEMP_CONFIG" 2>/dev/null || base64 "$TEMP_CONFIG" | tr -d '\n')
 rm "$TEMP_CONFIG"
 # Transfer and decode on target
 sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "echo '$CONFIG_B64' | base64 -d > ~/.sprite-config && chmod 600 ~/.sprite-config"
-echo "  Transferred ~/.sprite-config"
+echo "  Transferred ~/.sprite-config (excluded sprite-specific URLs)"
 echo ""
 
 # Step 4: Download setup script
@@ -92,7 +93,7 @@ echo ""
 # Step 5: Run setup script
 echo "Step 5: Running setup script (this may take 3-5 minutes)..."
 echo ""
-sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "set -a && source ~/.sprite-config && set +a && export NON_INTERACTIVE=true && cd ~ && ./sprite-setup.sh --name '$SPRITE_NAME' all"
+sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "set -a && source ~/.sprite-config && set +a && export NON_INTERACTIVE=true && cd ~ && ./sprite-setup.sh --name '$SPRITE_NAME' --url '$PUBLIC_URL' all"
 echo ""
 
 # Step 6: Verify services

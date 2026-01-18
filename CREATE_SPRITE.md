@@ -34,10 +34,10 @@ The script transfers your `~/.sprite-config` which includes:
 - Tailscale auth key
 - Sprite Network credentials
 
-The following are **unique per sprite** and NOT transferred:
-- Hostname (set via sprite name parameter)
-- Public URL (auto-generated from sprite name)
-- Tailscale Serve URL (generated during setup)
+The following are **unique per sprite** and NOT transferred (filtered out):
+- `SPRITE_PUBLIC_URL` - Stripped during transfer, passed via --url to setup
+- `TAILSCALE_SERVE_URL` - Stripped during transfer, generated during setup
+- Hostname - Set via --name parameter during setup
 
 ## How It Works
 
@@ -76,16 +76,18 @@ The `create-sprite.sh` script follows this flow:
    - Extract and display public URL
 
 4. Transfer config
-   - cat ~/.sprite-config | sprite exec -- cat > ~/.sprite-config
-   - Clean up any control characters
+   - Strip sprite-specific URLs (SPRITE_PUBLIC_URL, TAILSCALE_SERVE_URL)
+   - Transfer filtered config to new sprite
+   - Ensures new sprite gets correct URLs
 
 5. Download setup script
    - curl sprite-setup.sh to new sprite
 
 6. Run setup
-   - sprite exec -- ./sprite-setup.sh --name <sprite-name> all
+   - sprite exec -- ./sprite-setup.sh --name <sprite-name> --url <public-url> all
    - Auto-detects ~/.sprite-config
    - Sets hostname to sprite name
+   - Overrides URL with correct value
    - Runs completely non-interactively
 
 7. Verify
@@ -185,17 +187,19 @@ If you prefer manual control:
 # 1. Create sprite
 sprite create my-sprite
 
-# 2. Make URL public
+# 2. Make URL public and get the URL
 sprite url update --auth public -s my-sprite
+PUBLIC_URL=$(sprite api /v1/sprites/my-sprite | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*: *"\([^"]*\)".*/\1/')
 
-# 3. Transfer config
-cat ~/.sprite-config | sprite -s my-sprite exec -- cat > ~/.sprite-config
+# 3. Transfer config (excluding sprite-specific URLs)
+grep -v '^SPRITE_PUBLIC_URL=' ~/.sprite-config | grep -v '^TAILSCALE_SERVE_URL=' | \
+  sprite -s my-sprite exec -- cat > ~/.sprite-config
 
 # 4. Download and run setup
 sprite -s my-sprite exec -- bash -c "
   curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o ~/sprite-setup.sh
   chmod +x ~/sprite-setup.sh
-  ~/sprite-setup.sh --name my-sprite all
+  ~/sprite-setup.sh --name my-sprite --url '$PUBLIC_URL' all
 "
 ```
 
