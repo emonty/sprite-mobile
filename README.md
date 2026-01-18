@@ -11,6 +11,7 @@ sprite-mobile gives you a progressive web app chat UI for accessing Claude Code 
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Claude Code Integration](#claude-code-integration)
 - [Features](#features)
 - [Access Model](#access-model)
 - [Sprite Setup](#sprite-setup)
@@ -38,6 +39,29 @@ This app is designed to run on a Sprite from [sprites.dev](https://sprites.dev).
 - **Claude Code** CLI pre-installed and authenticated
 
 If running elsewhere, you'll need to install these manually and authenticate Claude Code with `claude login`.
+
+## Claude Code Integration
+
+sprite-mobile includes a comprehensive Claude skill that provides context about the architecture, service management, development workflows, and sprite orchestration. When working with Claude Code on a sprite-mobile sprite, Claude automatically has access to this skill.
+
+**The skill covers:**
+- Architecture (tailnet-gate + sprite-mobile integration)
+- Service management (restart procedures, logs, status)
+- Development workflows (service worker cache versioning)
+- Creating and managing other sprite-mobile sprites
+- Configuration management and replication
+- API endpoints and WebSocket protocol
+- Common troubleshooting tasks
+
+**Location:** `.claude/skills/sprite-mobile.md`
+
+This means you can ask Claude questions like:
+- "How do I restart the sprite-mobile service?"
+- "Create a new sprite-mobile sprite called test-sprite"
+- "What's the service worker cache version and when should I bump it?"
+- "How does the tailnet-gate work?"
+
+Claude will have full context about sprite-mobile without needing to read through documentation or search for files.
 
 ## Features
 
