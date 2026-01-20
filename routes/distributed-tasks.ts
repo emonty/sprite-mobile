@@ -45,14 +45,10 @@ export async function createTask(req: Request): Promise<any> {
     sessionId,
   });
 
-  // Get the task prompt
-  const { loadMessages } = await import("../lib/storage");
-  const taskPrompt = loadMessages(sessionId)[0].content;
-
-  // Start Claude on the target sprite using sprite exec
-  // This creates a detachable session that keeps the sprite alive
-  wakeAndStartTaskOnSprite(assignedTo, sessionId, taskPrompt).catch(err => {
-    console.error(`Failed to start task on ${assignedTo}:`, err);
+  // Use wakeAndNotifySprite to trigger the target sprite to check for tasks
+  // The checkForTasks endpoint will spawn Claude properly through sprite-mobile
+  wakeAndNotifySprite(assignedTo).catch(err => {
+    console.error(`Failed to wake ${assignedTo}:`, err);
   });
 
   return { task };
