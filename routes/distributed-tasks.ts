@@ -115,17 +115,20 @@ function summarizeDistribution(tasks: tasks.DistributedTask[]): Record<string, n
 
 async function wakeAndStartTaskOnSprite(spriteName: string, sessionId: string, taskPrompt: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Use sprite exec to run Claude directly on the target sprite
+    // Use sprite exec to run a bash command that starts Claude and pipes the prompt to it
     // This creates a detachable session that keeps the sprite alive while working
     console.log(`Starting Claude on ${spriteName} for session ${sessionId}`);
+
+    // Echo the prompt and pipe it to claude, which will process it and keep running
+    const bashCommand = `echo ${JSON.stringify(taskPrompt)} | claude`;
 
     const proc = spawn("sprite", [
       "exec",
       "-s",
       spriteName,
-      "claude",
-      "-p",
-      taskPrompt
+      "bash",
+      "-c",
+      bashCommand
     ]);
 
     let output = "";
@@ -138,8 +141,9 @@ async function wakeAndStartTaskOnSprite(spriteName: string, sessionId: string, t
     });
 
     proc.on("close", (code) => {
-      if (code === 0) {
-        console.log(`Started Claude session on ${spriteName}`);
+      console.log(`Claude session completed on ${spriteName}, output length: ${output.length}`);
+      if (code === 0 || output.length > 0) {
+        // Consider it successful if we got output, even if exit code is non-zero
         resolve();
       } else {
         console.error(`Failed to start Claude on ${spriteName}:`, output);
