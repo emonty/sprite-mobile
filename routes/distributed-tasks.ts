@@ -228,6 +228,13 @@ async function spawnClaudeForTask(sessionId: string): Promise<void> {
     throw new Error(`Session ${sessionId} not found`);
   }
 
+  const { loadMessages } = await import("../lib/storage");
+  const messages = loadMessages(sessionId);
+
+  if (messages.length === 0) {
+    throw new Error(`No messages found for session ${sessionId}`);
+  }
+
   const cwd = session.cwd || process.env.HOME || "/home/sprite";
   const claudeSessionId = session.claudeSessionId;
 
@@ -252,6 +259,25 @@ async function spawnClaudeForTask(sessionId: string): Promise<void> {
   // Start handling output - continues autonomously
   handleClaudeOutput(bg);
   handleClaudeStderr(bg);
+
+  // Give the process a moment to initialize
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Send the initial message to Claude's stdin to start the conversation
+  const initialMessage = messages[messages.length - 1]; // Get the last (most recent) message
+  if (initialMessage.role === "user") {
+    const claudeMessage = JSON.stringify({
+      type: "user",
+      content: initialMessage.content,
+    }) + "\n";
+
+    try {
+      bg.process.stdin.write(claudeMessage);
+      console.log(`Sent initial message to Claude process for session ${sessionId}`);
+    } catch (err) {
+      console.error(`Failed to send initial message to Claude:`, err);
+    }
+  }
 
   console.log(`Claude process spawned for task session ${sessionId} - running autonomously`);
 }
