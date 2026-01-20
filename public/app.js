@@ -540,6 +540,7 @@
       ws = new WebSocket(`${protocol}//${location.host}/ws?session=${sessionId}`);
 
       ws.onopen = () => {
+        console.log('[Client] WebSocket connected to session:', sessionId);
         statusEl.textContent = 'Connected';
         statusEl.className = 'connected';
         sendBtn.disabled = false;
@@ -561,6 +562,9 @@
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
+          if (msg.type !== 'content_block_delta') { // Don't log every streaming delta
+            console.log('[Client] Received message type:', msg.type);
+          }
           handleMessage(msg);
         } catch (e) {
           console.error('Failed to parse message:', e);
@@ -625,6 +629,7 @@
 
         case 'history':
           // Render stored message history - clear first to avoid duplicates
+          console.log('[Client] Received history:', msg.messages?.length, 'messages');
           if (msg.messages && Array.isArray(msg.messages)) {
             messagesEl.innerHTML = '';
             currentAssistantMessage = null;
@@ -638,6 +643,7 @@
                 addStoredAssistantMessage(m.content);
               }
             }
+            console.log('[Client] Rendered', msg.messages.length, 'messages from history');
           }
           break;
 
