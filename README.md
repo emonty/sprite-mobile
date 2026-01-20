@@ -119,8 +119,14 @@ Claude will create the task and automatically wake the target sprite. The target
 1. Receive the task in its queue
 2. Create a new Claude Code session with the task description
 3. Work on the task autonomously
-4. Report completion back to Tigris
-5. Automatically pick up the next queued task
+4. For git repository work:
+   - Create a feature branch (feat/* or fix/*)
+   - Complete the work and commit changes
+   - Push the branch to remote
+   - Create a pull request using gh CLI
+   - Include the PR URL in the completion summary
+5. Report completion back to Tigris
+6. Automatically pick up the next queued task
 
 #### Distributing Multiple Tasks
 
@@ -151,6 +157,31 @@ The web interface includes a Tasks button (📋) in the header that opens a moda
 - **My Tasks**: Your current task and queue
 - **All Sprites Status**: What each sprite in the network is working on
 - **Task History**: Complete task history with status-based color coding
+
+#### Git Workflow for Repository Tasks
+
+When a distributed task involves work on a git repository, Claude automatically follows this workflow:
+
+1. **Create Feature Branch**: Before starting work, create a descriptive branch
+   - Format: `feat/brief-description` for new features
+   - Format: `fix/brief-description` for bug fixes
+   - Example: `git checkout -b feat/add-user-authentication`
+
+2. **Complete Work**: Implement the changes as described in the task
+
+3. **Commit Changes**: Stage and commit with a clear message
+   - Example: `git add . && git commit -m "Add user authentication feature"`
+
+4. **Push Branch**: Push to remote repository
+   - Example: `git push -u origin feat/add-user-authentication`
+
+5. **Create Pull Request**: Use gh CLI to create a PR
+   - Example: `gh pr create --title "Add user authentication" --body "Implements feature X"`
+
+6. **Report Completion**: Include the PR URL in the task completion summary
+   - Example: "Completed task. Created PR: https://github.com/org/repo/pull/123"
+
+**Note**: If a task doesn't involve a git repository or the repository isn't configured for remote pushes, the git workflow is skipped and the task completes normally.
 
 ### API Endpoints
 

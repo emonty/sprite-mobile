@@ -203,6 +203,29 @@ POST /api/distributed-tasks/complete
   "success": true
 }
 
+**Git Workflow (for repository work):**
+
+If this task involves working on a git repository, follow this workflow:
+
+1. **Before starting work**: Create a descriptive feature branch
+   - Use format: "feat/brief-description" for features, "fix/brief-description" for fixes
+   - Example: \`git checkout -b feat/add-user-authentication\`
+
+2. **After completing the work**:
+   - Stage and commit your changes with a clear commit message
+   - Example: \`git add . && git commit -m "Add user authentication feature"\`
+
+3. **Push and create PR**:
+   - Push the branch: \`git push -u origin <branch-name>\`
+   - Create a pull request using gh CLI:
+     \`gh pr create --title "Your PR title" --body "Description of changes"\`
+
+4. **Include PR URL in completion summary**:
+   - The completion summary should include the PR URL for tracking
+   - Example: "Completed task X. Created PR: https://github.com/org/repo/pull/123"
+
+**Note:** If the task does not involve a git repository or the repository is not configured for remote pushes, skip the git workflow and just complete the task normally.
+
 Get started!`;
 
   const initialMessage = {
