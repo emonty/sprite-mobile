@@ -76,7 +76,7 @@ export async function handleClaudeOutput(bg: BackgroundProcess) {
 
   // Track last save time to debounce saves during streaming
   let lastSaveTime = 0;
-  const SAVE_INTERVAL = 500; // Save at most every 500ms during streaming
+  const SAVE_INTERVAL = 200; // Save at most every 200ms during streaming (more frequent to survive refreshes)
 
   try {
     while (true) {
@@ -110,6 +110,7 @@ export async function handleClaudeOutput(bg: BackgroundProcess) {
             if (now - lastSaveTime >= SAVE_INTERVAL && bg.assistantBuffer.length > 0) {
               lastSaveTime = now;
               saveInProgressMessage(bg.sessionId, bg.assistantBuffer);
+              console.log(`[${bg.sessionId}] Saved in-progress message (${bg.assistantBuffer.length} chars)`);
             }
           }
 
@@ -132,6 +133,7 @@ export async function handleClaudeOutput(bg: BackgroundProcess) {
               content: bg.assistantBuffer,
               timestamp: Date.now(),
             });
+            console.log(`[${bg.sessionId}] Saved complete assistant message (${bg.assistantBuffer.length} chars)`);
             // Clear any in-progress message marker
             clearInProgressMessage(bg.sessionId);
             updateSession(bg.sessionId, {
