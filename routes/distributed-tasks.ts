@@ -94,22 +94,19 @@ function summarizeDistribution(tasks: tasks.DistributedTask[]): Record<string, n
   return distribution;
 }
 
-async function wakeAndNotifySprite(spriteName: string): Promise<void> {
+async function wakeAndStartTaskOnSprite(spriteName: string, sessionId: string, taskPrompt: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Use sprite exec to run a script that starts Claude for the task
-    // This creates a detachable session that keeps the sprite alive
-    const script = `
-      # Check for pending tasks and start Claude if there are any
-      curl -s -X POST http://localhost:8081/api/distributed-tasks/check-and-start
-    `;
+    // Use sprite exec to run Claude directly on the target sprite
+    // This creates a detachable session that keeps the sprite alive while working
+    console.log(`Starting Claude on ${spriteName} for session ${sessionId}`);
 
     const proc = spawn("sprite", [
       "exec",
       "-s",
       spriteName,
-      "bash",
-      "-c",
-      script
+      "claude",
+      "-p",
+      taskPrompt
     ]);
 
     let output = "";
@@ -123,10 +120,44 @@ async function wakeAndNotifySprite(spriteName: string): Promise<void> {
 
     proc.on("close", (code) => {
       if (code === 0) {
-        console.log(`Woke ${spriteName} and started task processing`);
+        console.log(`Started Claude session on ${spriteName}`);
         resolve();
       } else {
-        reject(new Error(`Failed to wake ${spriteName}: ${output}`));
+        console.error(`Failed to start Claude on ${spriteName}:`, output);
+        reject(new Error(`Failed to start Claude on ${spriteName}: ${output}`));
+      }
+    });
+  });
+}
+
+// Keep the old function for backward compatibility but make it call check
+async function wakeAndNotifySprite(spriteName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("sprite", [
+      "exec",
+      "-s",
+      spriteName,
+      "curl",
+      "-X",
+      "POST",
+      "http://localhost:8081/api/distributed-tasks/check"
+    ]);
+
+    let output = "";
+    proc.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    proc.stderr.on("data", (data) => {
+      output += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        console.log(`Notified ${spriteName} to check for tasks`);
+        resolve();
+      } else {
+        reject(new Error(`Failed to notify ${spriteName}: ${output}`));
       }
     });
   });
