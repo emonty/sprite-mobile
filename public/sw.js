@@ -1,7 +1,7 @@
 // Service Worker for Sprite Mobile PWA
 // Caches shell for offline-first loading and stores public URL for sprite wake-up
 
-const CACHE_VERSION = 'v40';
+const CACHE_VERSION = 'v41';
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 const CONFIG_CACHE = `config-${CACHE_VERSION}`;
 
@@ -152,18 +152,30 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Navigation requests: serve cached shell, or offline fallback
+  // Navigation requests: network-first, fall back to cached shell or offline page
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => {
-        if (cached) return cached;
-        // Try network, fall back to minimal offline page
-        return fetch(event.request).catch(() => {
-          return new Response(OFFLINE_HTML, {
-            headers: { 'Content-Type': 'text/html' }
+      fetch(event.request)
+        .then((response) => {
+          // Cache the fresh response
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => {
+              cache.put('/index.html', clone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Network failed, try cache
+          return caches.match('/index.html').then((cached) => {
+            if (cached) return cached;
+            // No cache either, show offline page
+            return new Response(OFFLINE_HTML, {
+              headers: { 'Content-Type': 'text/html' }
+            });
           });
-        });
-      })
+        })
     );
     return;
   }
@@ -191,22 +203,45 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets and CDN: cache-first
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        // Cache successful responses for static files
-        if (response.ok && (url.origin === self.location.origin || url.hostname.includes('cdnjs'))) {
-          const clone = response.clone();
-          caches.open(SHELL_CACHE).then((cache) => {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      });
-    })
-  );
+  // Static assets: network-first for app files, cache-first for CDN
+  const isAppFile = url.origin === self.location.origin &&
+                    (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+
+  if (isAppFile) {
+    // App files (js, css): network-first so updates show immediately
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => {
+              cache.put(event.request, clone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Network failed, fall back to cache
+          return caches.match(event.request);
+        })
+    );
+  } else {
+    // CDN and other assets: cache-first for performance
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response.ok && url.hostname.includes('cdnjs')) {
+            const clone = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => {
+              cache.put(event.request, clone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+  }
 });
 
 // Message handler for cache operations from the main app
