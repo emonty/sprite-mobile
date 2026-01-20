@@ -31,24 +31,10 @@ export async function createTask(req: Request): Promise<any> {
     description,
   });
 
-  // Mark as in progress and create session immediately
-  await tasks.updateTask(task.id, {
-    status: "in_progress",
-    startedAt: new Date().toISOString(),
-  });
-
-  // Create a Claude session for this task
-  const sessionId = await createTaskSession(task);
-
-  // Update task with session ID
-  await tasks.updateTask(task.id, {
-    sessionId,
-  });
-
-  // Start Claude on the target sprite using sprite exec with --resume
-  // This creates a detachable session that keeps the sprite alive
-  wakeAndStartTaskOnSprite(assignedTo, sessionId).catch(err => {
-    console.error(`Failed to start task on ${assignedTo}:`, err);
+  // Wake the target sprite and tell it to check for tasks
+  // The target sprite will create the session locally and run Claude
+  wakeAndNotifySprite(assignedTo).catch(err => {
+    console.error(`Failed to wake ${assignedTo}:`, err);
   });
 
   return { task };
