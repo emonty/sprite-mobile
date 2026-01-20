@@ -84,14 +84,72 @@ export const websocketHandlers = {
     const sessionId = wsData.sessionId;
     if (!sessionId) return;
 
-    const bg = backgroundProcesses.get(sessionId);
+    let bg = backgroundProcesses.get(sessionId);
+
+    // If no background process exists, check if this is a user message and spawn a new one
     if (!bg) {
-      ws.send(JSON.stringify({ type: "error", message: "No active Claude process" }));
-      return;
+      try {
+        const data = JSON.parse(message.toString());
+
+        // Only spawn new process for user messages, not for interrupts
+        if (data.type === "user" && (data.content || data.imageId)) {
+          console.log(`Spawning new Claude process for session ${sessionId} after interruption`);
+          const session = getSession(sessionId);
+          const cwd = session?.cwd || process.env.HOME || "/home/sprite";
+          const claudeSessionId = session?.claudeSessionId;
+
+          const process = spawnClaude(cwd, claudeSessionId);
+          bg = {
+            process,
+            buffer: "",
+            assistantBuffer: "",
+            sessionId,
+            clients: new Set([ws]),
+            startedAt: Date.now(),
+            isGenerating: false,
+          };
+          backgroundProcesses.set(sessionId, bg);
+
+          // Start handling output
+          handleClaudeOutput(bg);
+          handleClaudeStderr(bg);
+
+          // Small delay to let the process initialize
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else {
+          ws.send(JSON.stringify({ type: "error", message: "No active Claude process" }));
+          return;
+        }
+      } catch (err) {
+        ws.send(JSON.stringify({ type: "error", message: "No active Claude process" }));
+        return;
+      }
     }
 
     try {
       const data = JSON.parse(message.toString());
+
+      if (data.type === "interrupt") {
+        // Kill the Claude process to stop it immediately
+        try {
+          console.log(`Interrupting Claude process for session ${sessionId}`);
+          bg.process.kill();
+          backgroundProcesses.delete(sessionId);
+          updateSession(sessionId, { isProcessing: false });
+
+          // Notify clients that processing stopped
+          for (const client of bg.clients) {
+            if (client.readyState === 1) {
+              try {
+                client.send(JSON.stringify({ type: "result" }));
+              } catch {}
+            }
+          }
+        } catch (err) {
+          console.error("Error interrupting process:", err);
+        }
+        return;
+      }
 
       if (data.type === "user" && (data.content || data.imageId)) {
         // Check if this is the first message - auto-rename the session
