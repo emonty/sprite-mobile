@@ -193,31 +193,50 @@ TASK_PROMPT_EOF`;
 // Keep the old function for backward compatibility but make it call check
 async function wakeAndNotifySprite(spriteName: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Use sprite exec to run a script that fetches the task and runs Claude
+    // The exec connection keeps the sprite alive while Claude works
+    const script = `
+      # Get the next task from the API
+      TASK_JSON=$(curl -s -X POST http://localhost:8081/api/distributed-tasks/check)
+
+      # Extract session ID
+      SESSION_ID=$(echo "$TASK_JSON" | jq -r '.sessionId // empty')
+
+      if [ -n "$SESSION_ID" ]; then
+        echo "Starting Claude for session $SESSION_ID"
+        # Run Claude with --resume - this runs in foreground keeping exec alive
+        claude --resume "$SESSION_ID"
+      else
+        echo "No pending tasks"
+      fi
+    `;
+
     const proc = spawn("sprite", [
       "exec",
       "-s",
       spriteName,
-      "curl",
-      "-X",
-      "POST",
-      "http://localhost:8081/api/distributed-tasks/check"
+      "bash",
+      "-c",
+      script
     ]);
 
     let output = "";
     proc.stdout.on("data", (data) => {
       output += data.toString();
+      console.log(`[${spriteName}] ${data.toString().trim()}`);
     });
 
     proc.stderr.on("data", (data) => {
       output += data.toString();
+      console.error(`[${spriteName}] ${data.toString().trim()}`);
     });
 
     proc.on("close", (code) => {
-      if (code === 0) {
-        console.log(`Notified ${spriteName} to check for tasks`);
+      console.log(`Task execution on ${spriteName} completed with code ${code}`);
+      if (code === 0 || output.length > 0) {
         resolve();
       } else {
-        reject(new Error(`Failed to notify ${spriteName}: ${output}`));
+        reject(new Error(`Failed to start task on ${spriteName}: ${output}`));
       }
     });
   });
