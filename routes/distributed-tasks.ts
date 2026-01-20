@@ -31,9 +31,28 @@ export async function createTask(req: Request): Promise<any> {
     description,
   });
 
-  // Wake the target sprite and tell it to check for tasks
-  wakeAndNotifySprite(assignedTo).catch(err => {
-    console.error(`Failed to wake sprite ${assignedTo}:`, err);
+  // Mark as in progress and create session immediately
+  await tasks.updateTask(task.id, {
+    status: "in_progress",
+    startedAt: new Date().toISOString(),
+  });
+
+  // Create a Claude session for this task
+  const sessionId = await createTaskSession(task);
+
+  // Update task with session ID
+  await tasks.updateTask(task.id, {
+    sessionId,
+  });
+
+  // Get the task prompt
+  const { loadMessages } = await import("../lib/storage");
+  const taskPrompt = loadMessages(sessionId)[0].content;
+
+  // Start Claude on the target sprite using sprite exec
+  // This creates a detachable session that keeps the sprite alive
+  wakeAndStartTaskOnSprite(assignedTo, sessionId, taskPrompt).catch(err => {
+    console.error(`Failed to start task on ${assignedTo}:`, err);
   });
 
   return { task };
