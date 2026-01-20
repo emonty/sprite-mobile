@@ -115,12 +115,12 @@ function summarizeDistribution(tasks: tasks.DistributedTask[]): Record<string, n
 
 async function wakeAndStartTaskOnSprite(spriteName: string, sessionId: string, taskPrompt: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Use sprite exec to run a bash command that starts Claude and pipes the prompt to it
-    // This creates a detachable session that keeps the sprite alive while working
+    // Use sprite exec to run Claude with the prompt piped via heredoc
+    // This avoids shell escaping issues and creates a detachable session
     console.log(`Starting Claude on ${spriteName} for session ${sessionId}`);
 
-    // Echo the prompt and pipe it to claude, which will process it and keep running
-    const bashCommand = `echo ${JSON.stringify(taskPrompt)} | claude`;
+    // Use heredoc to safely pass the prompt to claude
+    const bashCommand = `claude <<'TASK_PROMPT_EOF'\n${taskPrompt}\nTASK_PROMPT_EOF`;
 
     const proc = spawn("sprite", [
       "exec",
