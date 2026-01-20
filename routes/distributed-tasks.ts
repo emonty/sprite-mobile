@@ -172,6 +172,61 @@ export async function checkForTasks(_req: Request): Promise<any> {
   return { message: "Started task", task: nextTask, sessionId };
 }
 
+export async function checkAndStartTask(_req: Request): Promise<any> {
+  if (!tasks.isTasksNetworkEnabled()) {
+    return { error: "Distributed tasks not configured", status: 503 };
+  }
+
+  const spriteName = (await import("../lib/network")).getHostname();
+  const queue = await tasks.getTaskQueue(spriteName);
+
+  // If already working on a task, don't start a new one
+  if (queue.currentTask) {
+    return { message: "Already working on a task", currentTask: queue.currentTask };
+  }
+
+  // Get next task
+  const nextTask = await tasks.getNextTask(spriteName);
+
+  if (!nextTask) {
+    return { message: "No pending tasks" };
+  }
+
+  // Mark as in progress
+  await tasks.updateTask(nextTask.id, {
+    status: "in_progress",
+    startedAt: new Date().toISOString(),
+  });
+
+  // Create a Claude session for this task
+  const sessionId = await createTaskSession(nextTask);
+
+  // Update task with session ID
+  await tasks.updateTask(nextTask.id, {
+    sessionId,
+  });
+
+  // Start Claude in a detachable session using sprite exec
+  // This keeps the sprite alive while Claude works on the task
+  const taskPrompt = (await import("../lib/storage")).loadMessages(sessionId)[0].content;
+
+  console.log(`Starting detachable Claude session for task ${nextTask.id} on session ${sessionId}`);
+
+  // Spawn Claude via command line in the background
+  // The Claude session becomes a detachable session that keeps the sprite alive
+  spawn("claude", [
+    "-p",
+    taskPrompt,
+    "--resume",
+    sessionId
+  ], {
+    detached: true,
+    stdio: 'ignore'
+  }).unref();
+
+  return { message: "Started task in detachable session", task: nextTask, sessionId };
+}
+
 async function createTaskSession(task: tasks.DistributedTask): Promise<string> {
   const { loadSessions, saveSessions, saveMessages, generateId } = await import("../lib/storage");
   const { ChatSession, StoredMessage } = await import("../lib/types");
