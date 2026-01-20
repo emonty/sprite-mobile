@@ -160,6 +160,7 @@ export async function handleClaudeOutput(bg: BackgroundProcess) {
       content: bg.assistantBuffer,
       timestamp: Date.now(),
     });
+    console.log(`[${bg.sessionId}] Saved abruptly ended assistant message (${bg.assistantBuffer.length} chars)`);
     clearInProgressMessage(bg.sessionId);
   }
   console.log(`Claude process finished for session ${bg.sessionId}`);

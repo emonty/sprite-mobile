@@ -56,6 +56,7 @@ export const websocketHandlers = {
     const inProgress = getInProgressMessage(sessionId);
     const allMessages = inProgress ? [...messages, inProgress] : messages;
     if (allMessages.length > 0) {
+      console.log(`[${sessionId}] Sending history: ${allMessages.length} messages (${inProgress ? 'including in-progress' : 'all complete'})`);
       ws.send(JSON.stringify({ type: "history", messages: allMessages }));
     }
 
@@ -209,6 +210,7 @@ export const websocketHandlers = {
           image: imageInfo,
         };
         saveMessage(sessionId, userMsg);
+        console.log(`[${sessionId}] Saved user message`);
         updateSession(sessionId, {
           lastMessageAt: Date.now(),
           lastMessage: "You: " + (data.content ? data.content.slice(0, 50) : "[Image]"),
