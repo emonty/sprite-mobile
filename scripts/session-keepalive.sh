@@ -19,7 +19,7 @@ while true; do
 
   if [ "$KEEP_AWAKE" = "true" ]; then
     echo "[$(date)] Claude generating ($GENERATING active), keeping sprite awake"
-    sleep 30
+    sleep 10
   else
     echo "[$(date)] No active generation, exiting"
     exit 0
