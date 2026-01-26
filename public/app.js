@@ -623,6 +623,7 @@
           // Handle Claude init message - update session ID to match Claude's UUID
           if (msg.subtype === 'init' && msg.session_id && currentSession) {
             const claudeUUID = msg.session_id;
+            console.log(`[Client] Received init message with session_id: ${claudeUUID}, current: ${currentSession.id}`);
             if (currentSession.id !== claudeUUID) {
               console.log(`[Client] Updating session ID from ${currentSession.id} to Claude UUID: ${claudeUUID}`);
               const oldId = currentSession.id;
@@ -853,6 +854,8 @@
         const contentEl = currentAssistantMessage.querySelector('.message-content');
         contentEl.classList.remove('streaming');
         contentEl.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+
+        console.log('[finalizeAssistantMessage] Session ID:', currentSession?.id);
 
         // Update session metadata in backend with assistant's response
         if (currentSession && assistantContent) {
@@ -1217,6 +1220,7 @@
 
     async function regenerateTitle() {
       if (!currentSession) return;
+      console.log('[regenerateTitle] Using session ID:', currentSession.id);
       regenerateTitleBtn.classList.add('spinning');
 
       try {
@@ -1230,6 +1234,12 @@
           chatTitle.textContent = data.name;
           loadSessions();
           messageCountSinceLastTitleUpdate = 0;
+        } else if (res.status === 404) {
+          // Claude session file doesn't exist yet (init message may not have arrived)
+          // This is normal for very new sessions, skip silently
+          console.log('[regenerateTitle] Claude session file not found yet, skipping');
+        } else {
+          console.error('Failed to regenerate title:', res.status, res.statusText);
         }
       } catch (err) {
         console.error('Failed to regenerate title:', err);
