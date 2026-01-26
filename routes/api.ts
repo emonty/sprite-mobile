@@ -311,28 +311,34 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         const content = readFileSync(claudeSessionFile, "utf-8");
         const lines = content.trim().split("\n").filter(line => line.trim());
 
-        // Parse Claude's stream-json format
+        // Parse Claude's .jsonl format (written by claude-hub)
         messages = lines
           .map(line => {
             try {
               const msg = JSON.parse(line);
-              if (msg.type === "input_json" && msg.input_json) {
-                // User message
-                const userMsg = JSON.parse(msg.input_json);
-                if (userMsg.messages && userMsg.messages.length > 0) {
-                  const content = userMsg.messages[0].content;
-                  // Handle both string and array content
-                  const textContent = Array.isArray(content)
+
+              // User message: {"type": "user", "message": {"role": "user", "content": "..."}}
+              if (msg.type === "user" && msg.message?.content) {
+                const content = msg.message.content;
+                // Handle both string and array content
+                const textContent = typeof content === "string"
+                  ? content
+                  : Array.isArray(content)
                     ? content.filter((c: any) => c.type === "text").map((c: any) => c.text).join(" ")
-                    : content;
+                    : "";
+                if (textContent) {
                   return { role: "user", content: textContent };
                 }
-              } else if (msg.type === "message" && msg.message) {
-                // Assistant message
-                const content = msg.message.content
-                  ?.filter((c: any) => c.type === "text")
-                  .map((c: any) => c.text)
-                  .join("\n") || "";
+              }
+
+              // Assistant message: {"type": "assistant", "message": {"content": [{"type": "text", "text": "..."}]}}
+              if (msg.type === "assistant" && msg.message?.content) {
+                const content = Array.isArray(msg.message.content)
+                  ? msg.message.content
+                      .filter((c: any) => c.type === "text")
+                      .map((c: any) => c.text)
+                      .join("\n")
+                  : "";
                 if (content) {
                   return { role: "assistant", content };
                 }
