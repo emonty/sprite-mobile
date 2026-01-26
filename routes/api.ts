@@ -466,10 +466,12 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
           return new Response("Only images are allowed", { status: 400 });
         }
 
-        const buffer = await file.arrayBuffer();
+        // Only read first 12 bytes for format detection (magic bytes check)
+        const blobSlice = file.slice(0, 12);
+        const headerBuffer = await blobSlice.arrayBuffer();
 
         // Detect actual image format from file content
-        const imageFormat = detectImageFormat(buffer);
+        const imageFormat = detectImageFormat(headerBuffer);
         if (!imageFormat) {
           return new Response("Unsupported or invalid image format", { status: 400 });
         }
@@ -483,7 +485,9 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         const filename = `${id}.${imageFormat.ext}`;
         const filePath = join(sessionUploadsDir, filename);
 
-        writeFileSync(filePath, Buffer.from(buffer));
+        // Now read full file for saving
+        const fullBuffer = await file.arrayBuffer();
+        writeFileSync(filePath, Buffer.from(fullBuffer));
 
         return Response.json({
           id,
