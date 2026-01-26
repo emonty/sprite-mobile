@@ -197,7 +197,7 @@ grep -v '^SPRITE_PUBLIC_URL=' ~/.sprite-config | grep -v '^TAILSCALE_SERVE_URL='
 
 # 4. Download and run setup
 sprite -s my-sprite exec -- bash -c "
-  curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o ~/sprite-setup.sh
+  curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/main/scripts/sprite-setup.sh -o ~/sprite-setup.sh
   chmod +x ~/sprite-setup.sh
   ~/sprite-setup.sh --name my-sprite --url '$PUBLIC_URL' all
 "

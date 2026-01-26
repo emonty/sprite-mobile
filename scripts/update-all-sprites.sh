@@ -50,9 +50,9 @@ for sprite_name in $SPRITES; do
     fi
 
     # Pull latest code with auth if needed
-    git remote set-url origin https://\$GH_TOKEN@github.com/clouvet/sprite-mobile.git 2>/dev/null || true
+    git remote set-url origin https://\$GH_TOKEN@github.com/emonty/sprite-mobile.git 2>/dev/null || true
     git pull
-    git remote set-url origin https://github.com/clouvet/sprite-mobile.git 2>/dev/null || true
+    git remote set-url origin https://github.com/emonty/sprite-mobile.git 2>/dev/null || true
 
     echo 'Code updated successfully'
   " 2>&1; then

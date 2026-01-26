@@ -35,7 +35,7 @@ GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
 if [ -z "$SPRITE_MOBILE_REPO" ] && [ -f "$HOME/.zshrc" ]; then
     SPRITE_MOBILE_REPO=$(grep "^export SPRITE_MOBILE_REPO=" "$HOME/.zshrc" 2>/dev/null | sed 's/^export SPRITE_MOBILE_REPO=//' | tail -1)
 fi
-SPRITE_MOBILE_REPO="${SPRITE_MOBILE_REPO:-https://github.com/clouvet/sprite-mobile}"
+SPRITE_MOBILE_REPO="${SPRITE_MOBILE_REPO:-https://github.com/emonty/sprite-mobile}"
 
 # Load saved SPRITE_PUBLIC_URL from ~/.zshrc if not already set
 if [ -z "$SPRITE_PUBLIC_URL" ] && [ -f "$HOME/.zshrc" ]; then
@@ -648,8 +648,8 @@ step_2_configuration() {
 
         # Only prompt for repo if it's not already set
         if [ -z "$SPRITE_MOBILE_REPO" ]; then
-            read -p "sprite-mobile GitHub repo [https://github.com/clouvet/sprite-mobile]: " input_repo
-            SPRITE_MOBILE_REPO="${input_repo:-https://github.com/clouvet/sprite-mobile}"
+            read -p "sprite-mobile GitHub repo [https://github.com/emonty/sprite-mobile]: " input_repo
+            SPRITE_MOBILE_REPO="${input_repo:-https://github.com/emonty/sprite-mobile}"
         fi
     fi
 

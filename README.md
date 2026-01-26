@@ -37,7 +37,7 @@ sprite-mobile gives you a progressive web app chat UI for accessing Claude Code 
 To set up a fresh Sprite with all dependencies, authentication, and services, download and run the setup script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/clouvet/sprite-mobile/refs/heads/main/scripts/sprite-setup.sh -o sprite-setup.sh && chmod +x sprite-setup.sh && ./sprite-setup.sh
+curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/refs/heads/main/scripts/sprite-setup.sh -o sprite-setup.sh && chmod +x sprite-setup.sh && ./sprite-setup.sh
 ```
 
 The script will:
@@ -177,7 +177,7 @@ grep -v '^SPRITE_PUBLIC_URL=' ~/.sprite-config | grep -v '^TAILSCALE_SERVE_URL='
 
 # 4. Download and run setup
 sprite -s my-new-sprite exec -- bash -c "
-  curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o ~/sprite-setup.sh
+  curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/main/scripts/sprite-setup.sh -o ~/sprite-setup.sh
   chmod +x ~/sprite-setup.sh
   ~/sprite-setup.sh --name my-new-sprite --url '$PUBLIC_URL' all
 "

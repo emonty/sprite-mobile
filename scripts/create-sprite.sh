@@ -68,7 +68,7 @@ echo ""
 
 # Step 2: Make URL public
 echo "Step 2: Making URL public..."
-sprite url update --auth public -s "$SPRITE_NAME" -o "$ORG"
+sprite -s "$SPRITE_NAME" -o "$ORG" url update --auth public
 PUBLIC_URL=$(sprite api /v1/sprites/"$SPRITE_NAME" 2>/dev/null | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*: *"\([^"]*\)".*/\1/' | head -1)
 if [ -n "$PUBLIC_URL" ]; then
     echo "  Public URL: $PUBLIC_URL"
@@ -93,7 +93,7 @@ echo ""
 
 # Step 4: Download setup script
 echo "Step 4: Downloading setup script..."
-sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "curl -fsSL https://gist.githubusercontent.com/clouvet/901dabc09e62648fa394af65ad004d04/raw/sprite-setup.sh -o ~/sprite-setup.sh && chmod +x ~/sprite-setup.sh"
+sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/main/scripts/sprite-setup.sh -o ~/sprite-setup.sh && chmod +x ~/sprite-setup.sh"
 echo "  Downloaded sprite-setup.sh"
 echo ""
 
