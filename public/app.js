@@ -2027,6 +2027,12 @@
 
     // Init - wake up sprite first, then load sessions
     async function init() {
+      // Notify parent immediately that iframe is ready (for unauthorized detection)
+      // This must happen before wakeUpSprite() which can take >8 seconds
+      if (notifyParentReady) {
+        notifyParentReady();
+      }
+
       // Try to wake up the sprite (uses cached public URL if available)
       const spriteAwake = await wakeUpSprite();
 
@@ -2079,9 +2085,6 @@
           notifyParentOfHashChange();
         }
       }
-
-      // Notify parent that iframe is ready (for unauthorized detection)
-      notifyParentReady();
     }
 
     init();
