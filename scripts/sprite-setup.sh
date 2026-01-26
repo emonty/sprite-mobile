@@ -721,6 +721,19 @@ step_3_claude() {
 
     CLAUDE_TOKEN_FILE="$HOME/.config/claude-code/token"
 
+    # Helper to extract OAuth token from ~/.claude/.credentials.json
+    extract_claude_token_from_credentials() {
+        local creds_file="$HOME/.claude/.credentials.json"
+        if [ -f "$creds_file" ]; then
+            local token=$(grep -o '"accessToken":"[^"]*"' "$creds_file" 2>/dev/null | sed 's/"accessToken":"//;s/"//')
+            if [ -n "$token" ]; then
+                echo "$token"
+                return 0
+            fi
+        fi
+        return 1
+    }
+
     # Helper to save token to ~/.sprite-config
     save_claude_token() {
         local token_type="$1"  # "oauth" or "apikey"
@@ -787,7 +800,14 @@ CLAUDE_EOF
     # No token provided, prompt for authentication
     if [ "$NON_INTERACTIVE" = "true" ]; then
         if [ -f "$HOME/.claude/.credentials.json" ]; then
-            echo "Claude credentials file installed (will be validated on first use)"
+            echo "Claude credentials file exists, extracting OAuth token..."
+            extracted_token=$(extract_claude_token_from_credentials)
+            if [ -n "$extracted_token" ]; then
+                save_claude_token "oauth" "$extracted_token"
+                echo "Extracted and saved OAuth token from credentials file"
+            else
+                echo "Claude credentials file installed (will be validated on first use)"
+            fi
         else
             echo "Warning: Claude not authenticated and no credentials provided"
             echo "  Run interactively or provide credentials in config"
@@ -815,6 +835,11 @@ CLAUDE_EOF
                 else
                     echo "No token provided, falling back to interactive login..."
                     claude
+                    # Extract token from credentials after login
+                    extracted_token=$(extract_claude_token_from_credentials)
+                    if [ -n "$extracted_token" ]; then
+                        save_claude_token "oauth" "$extracted_token"
+                    fi
                 fi
                 ;;
             2)
@@ -829,12 +854,22 @@ CLAUDE_EOF
                 else
                     echo "No key provided, falling back to interactive login..."
                     claude
+                    # Extract token from credentials after login
+                    extracted_token=$(extract_claude_token_from_credentials)
+                    if [ -n "$extracted_token" ]; then
+                        save_claude_token "oauth" "$extracted_token"
+                    fi
                 fi
                 ;;
             *)
                 echo "Starting Claude CLI authentication..."
                 echo "Follow the prompts to authenticate:"
                 claude
+                # Extract token from credentials after login
+                extracted_token=$(extract_claude_token_from_credentials)
+                if [ -n "$extracted_token" ]; then
+                    save_claude_token "oauth" "$extracted_token"
+                fi
                 ;;
         esac
     fi
