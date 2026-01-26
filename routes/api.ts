@@ -12,6 +12,15 @@ import type { StoredMessage } from "../lib/types";
 import { backgroundProcesses, trySend } from "../lib/claude";
 import { discoverSprites, getSpriteStatus, getNetworkInfo, getHostname, updateHeartbeat, deleteSprite } from "../lib/network";
 import * as distributedTasks from "./distributed-tasks";
+import {
+  validatePassword,
+  createSession,
+  destroySession,
+  getSessionFromCookie,
+  createSessionCookie,
+  createLogoutCookie,
+  validateSession
+} from "../lib/auth";
 
 // Claude projects directory
 const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/home/sprite", ".claude", "projects");
@@ -198,6 +207,56 @@ function parseCliSessionMessages(cwd: string, claudeSessionId: string): StoredMe
 
 export function handleApi(req: Request, url: URL): Response | Promise<Response> | null {
   const path = url.pathname;
+
+  // GET /api/auth/status - Check authentication status
+  if (req.method === "GET" && path === "/api/auth/status") {
+    const cookieHeader = req.headers.get("cookie");
+    const sessionToken = getSessionFromCookie(cookieHeader);
+    const authenticated = validateSession(sessionToken);
+    return Response.json({ authenticated });
+  }
+
+  // POST /api/login - Authenticate with password
+  if (req.method === "POST" && path === "/api/login") {
+    return (async () => {
+      const body = await req.json().catch(() => ({}));
+      const { password } = body;
+
+      if (!password) {
+        return Response.json({ error: "Password required" }, { status: 400 });
+      }
+
+      if (!validatePassword(password)) {
+        return Response.json({ error: "Invalid password" }, { status: 401 });
+      }
+
+      const sessionToken = createSession();
+      const cookie = createSessionCookie(sessionToken);
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Set-Cookie": cookie,
+        },
+      });
+    })();
+  }
+
+  // POST /api/logout - End session
+  if (req.method === "POST" && path === "/api/logout") {
+    const cookieHeader = req.headers.get("cookie");
+    const sessionToken = getSessionFromCookie(cookieHeader);
+    destroySession(sessionToken);
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Set-Cookie": createLogoutCookie(),
+      },
+    });
+  }
 
   // GET /api/config - returns public configuration for the client
   // Read env var lazily so .env file has time to load

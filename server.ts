@@ -6,6 +6,7 @@ import { handleApi } from "./routes/api";
 import { websocketHandlers, allClients } from "./routes/websocket";
 import { initNetwork, registerSprite, updateHeartbeat, buildSpriteRegistration, isNetworkEnabled } from "./lib/network";
 import { initTasksNetwork } from "./lib/distributed-tasks";
+import { getSessionFromCookie, validateSession, requiresAuth } from "./lib/auth";
 
 // Load .env file if present
 const ENV_FILE = join(import.meta.dir, ".env");
@@ -65,6 +66,24 @@ const server = Bun.serve({
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });
+    }
+
+    // Authentication check - skip for public paths
+    if (requiresAuth(url.pathname)) {
+      const cookieHeader = req.headers.get("cookie");
+      const sessionToken = getSessionFromCookie(cookieHeader);
+
+      if (!validateSession(sessionToken)) {
+        // For API requests, return 401
+        if (url.pathname.startsWith("/api/") || url.pathname === "/ws" || url.pathname === "/ws/keepalive") {
+          return new Response("Unauthorized", { status: 401 });
+        }
+        // For page requests, redirect to login
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/login.html" },
+        });
+      }
     }
 
     // API routes

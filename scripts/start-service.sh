@@ -17,5 +17,8 @@ fi
 # Enable Go hub for multi-client sync
 export USE_GO_HUB=true
 
+# Set port to 8080 (public port) - changed from 8081 since we no longer use tailnet-gate
+export PORT="${PORT:-8080}"
+
 # Start the service without hot-reload to prevent refreshes during conversations
 exec bun "$HOME/.sprite-mobile/server.ts"

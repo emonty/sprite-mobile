@@ -42,9 +42,8 @@ if [ -z "$SPRITE_PUBLIC_URL" ] && [ -f "$HOME/.zshrc" ]; then
     SPRITE_PUBLIC_URL=$(grep "^export SPRITE_PUBLIC_URL=" "$HOME/.zshrc" 2>/dev/null | sed 's/^export SPRITE_PUBLIC_URL=//' | tail -1)
 fi
 SPRITE_PUBLIC_URL="${SPRITE_PUBLIC_URL:-}"
-APP_PORT="${APP_PORT:-8081}"
-WAKEUP_PORT="${WAKEUP_PORT:-8080}"
-TAILSCALE_AUTH_KEY="${TAILSCALE_AUTH_KEY:-}"
+# Changed: sprite-mobile now runs on port 8080 (public port) since we're not using tailnet-gate
+APP_PORT="${APP_PORT:-8080}"
 
 # ============================================
 # JSON Helper Functions (no jq dependency)
@@ -270,10 +269,7 @@ parse_pasted_config() {
                     export ANTHROPIC_API_KEY="$value"
                     echo "  ANTHROPIC_API_KEY: [set]"
                     ;;
-                TAILSCALE_AUTH_KEY)
-                    export TAILSCALE_AUTH_KEY="$value"
-                    echo "  TAILSCALE_AUTH_KEY: [set]"
-                    ;;
+                # TAILSCALE_AUTH_KEY - no longer needed, using password auth
                 GIT_USER_NAME)
                     GIT_USER_NAME="$value"
                     echo "  GIT_USER_NAME: $value"
@@ -347,7 +343,7 @@ EOF
     [ -n "$GH_TOKEN" ] && echo "GH_TOKEN=$GH_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && echo "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$ANTHROPIC_API_KEY" ] && echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> "$SPRITE_CONFIG_FILE"
-    [ -n "$TAILSCALE_AUTH_KEY" ] && echo "TAILSCALE_AUTH_KEY=$TAILSCALE_AUTH_KEY" >> "$SPRITE_CONFIG_FILE"
+    # TAILSCALE_AUTH_KEY - no longer saved, using password auth
     [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$SPRITE_API_TOKEN" ] && echo "SPRITE_API_TOKEN=$SPRITE_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
 
@@ -393,9 +389,10 @@ prompt_for_config() {
     echo "Example format:"
     echo "  GH_TOKEN=ghp_xxx"
     echo "  CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx"
-    echo "  TAILSCALE_AUTH_KEY=tskey-auth-xxx"
     echo "  GIT_USER_NAME=Your Name"
     echo "  GIT_USER_EMAIL=you@example.com"
+    echo ""
+    echo "Note: Tailscale not required - using password auth (default: Demopassword)"
     echo ""
     echo "Paste config (end with an empty line), or just press Enter to skip:"
     echo ""
@@ -1307,8 +1304,10 @@ step_8_sprite_mobile() {
 
     echo "Starting sprite-mobile service on port $APP_PORT..."
     # Use wrapper script that sources .zshrc to avoid logging tokens
+    # http_port makes it accessible via the public URL
     sprite_api -X PUT '/v1/services/sprite-mobile?duration=3s' -d "{
-      \"cmd\": \"$SPRITE_MOBILE_DIR/scripts/start-service.sh\"
+      \"cmd\": \"$SPRITE_MOBILE_DIR/scripts/start-service.sh\",
+      \"http_port\": $APP_PORT
     }"
 }
 
@@ -1584,7 +1583,7 @@ GATE_EOF
 
 step_11_claude_md() {
     echo ""
-    echo "=== Step 11: CLAUDE.md Setup ==="
+    echo "=== Step 8: CLAUDE.md Setup ==="
 
     CLAUDE_MD_PATH="$HOME/CLAUDE.md"
 
@@ -1606,13 +1605,14 @@ Claude should proactively manage checkpoints using the `/sprite` skill or `sprit
 
 ## Services
 
-### sprite-mobile (port 8081)
+### sprite-mobile (port 8080)
 Mobile-friendly web interface for chatting with Claude Code. Located at `~/.sprite-mobile/`.
 
 - Auto-updates on service start via `git pull`
 - Supports multiple concurrent chat sessions with persistent history
 - Uses WebSocket for real-time streaming
 - Works with claude-hub for multi-client sync
+- Protected by password authentication (default: Demopassword)
 
 Service command:
 ```bash
@@ -1640,20 +1640,6 @@ Service command:
 sprite-env services logs claude-hub  # View logs
 ```
 
-### tailnet-gate (port 8080)
-Public entry point that gates access via Tailscale. Located at `~/.tailnet-gate/`.
-
-**How it works:**
-1. User visits public URL (e.g., `https://my-sprite.sprites.app`)
-2. Gate serves a page that attempts to reach the Tailscale URL
-3. If reachable (user on tailnet) → redirects to Tailscale HTTPS URL
-4. If unreachable → shows "Unauthorized" page
-
-This ensures only users on the tailnet can access the sprite without requiring passwords or tokens.
-
-### Other Services
-- `tailscaled` - Tailscale daemon
-
 ## Git Commits
 
 Do NOT add "Co-Authored-By" lines to commit messages. Just write normal commit messages without any co-author attribution.
@@ -1664,7 +1650,7 @@ CLAUDE_EOF
 
 step_12_claude_hub() {
     echo ""
-    echo "=== Step 12: claude-hub Setup ==="
+    echo "=== Step 9: claude-hub Setup ==="
 
     CLAUDE_HUB_DIR="$HOME/.claude-hub"
     CLAUDE_HUB_REPO="https://github.com/clouvet/claude-hub.git"
@@ -1722,8 +1708,6 @@ SERVICE_EOF
 }
 
 show_summary() {
-    TAILSCALE_SERVE_URL=$(tailscale serve status 2>/dev/null | grep -oE 'https://[^ ]+' | head -1)
-
     echo ""
     echo "============================================"
     echo "Setup Complete!"
@@ -1731,13 +1715,8 @@ show_summary() {
     echo ""
     if [ -n "$SPRITE_PUBLIC_URL" ]; then
         echo "Public URL: $SPRITE_PUBLIC_URL"
-        echo "  - Wakes sprite and redirects to Tailscale URL if on tailnet"
-        echo "  - Shows 'Unauthorized' if not on tailnet"
-        echo ""
-    fi
-    if [ -n "$TAILSCALE_SERVE_URL" ]; then
-        echo "Tailscale HTTPS (PWA-ready):"
-        echo "  - sprite-mobile: $TAILSCALE_SERVE_URL"
+        echo "  - Protected by password authentication"
+        echo "  - Default password: Demopassword"
         echo ""
     fi
     echo "To check service status:"
@@ -1758,14 +1737,12 @@ STEP_NAMES=(
     "Claude CLI auth"
     "GitHub CLI auth"
     "Fly.io CLI (flyctl)"
-    "Tailscale"
-    "Tailscale Serve (HTTPS)"
     "sprite-mobile"
     "Sprite Network (optional)"
-    "Tailnet Gate"
     "CLAUDE.md"
     "claude-hub"
 )
+# Note: Tailscale-related steps removed - using password auth instead
 
 run_step() {
     local step_num="$1"
@@ -1775,16 +1752,14 @@ run_step() {
         3) step_3_claude ;;
         4) step_4_github ;;
         5) step_5_flyctl ;;
-        6) step_7_tailscale ;;
-        7) step_9_tailscale_serve ;;
-        8) step_8_sprite_mobile ;;
-        9) step_6_5_network ;;
-        10) step_10_tailnet_gate ;;
-        11) step_11_claude_md ;;
-        12) step_12_claude_hub ;;
+        6) step_8_sprite_mobile ;;
+        7) step_6_5_network ;;
+        8) step_11_claude_md ;;
+        9) step_12_claude_hub ;;
         *) echo "Unknown step: $step_num" >&2; return 1 ;;
     esac
 }
+# Note: Tailscale steps (old 6, 7, 10) removed - using password auth
 
 show_menu() {
     echo "============================================"
@@ -1797,17 +1772,16 @@ show_menu() {
     echo "   3.   Claude CLI authentication"
     echo "   4.   GitHub CLI authentication"
     echo "   5.   Fly.io CLI (flyctl) installation"
-    echo "   6.   Tailscale installation"
-    echo "   7.   Tailscale Serve (HTTPS for PWA)"
-    echo "   8.   sprite-mobile setup"
-    echo "   9.   Sprite Network (optional)"
-    echo "  10.   Tailnet Gate (public entry point)"
-    echo "  11.   CLAUDE.md creation"
-    echo "  12.   claude-hub setup (WebSocket hub)"
+    echo "   6.   sprite-mobile setup"
+    echo "   7.   Sprite Network (optional)"
+    echo "   8.   CLAUDE.md creation"
+    echo "   9.   claude-hub setup (WebSocket hub)"
+    echo ""
+    echo "Note: Password auth is used instead of Tailscale (default: Demopassword)"
     echo ""
     echo "Options:"
     echo "  all     - Run all steps sequentially"
-    echo "  <nums>  - Run specific steps (e.g., '1 3 5' or '7-10')"
+    echo "  <nums>  - Run specific steps (e.g., '1 3 5' or '6-9')"
     echo "  q       - Quit"
     echo ""
 }
@@ -1838,12 +1812,13 @@ run_all_steps() {
     step_3_claude
     step_4_github
     step_5_flyctl
-    step_7_tailscale
-    step_9_tailscale_serve
+    # Note: Tailscale steps removed - using password auth instead
+    # step_7_tailscale
+    # step_9_tailscale_serve
     step_12_claude_hub
     step_8_sprite_mobile
     step_6_5_network
-    step_10_tailnet_gate
+    # step_10_tailnet_gate - not needed with password auth
     step_11_claude_md
 
     # Final restart of sprite-mobile to pick up all environment changes
@@ -1893,15 +1868,15 @@ show_help() {
     echo "  Use --export on a configured sprite to generate a config file,"
     echo "  then use --config on a new sprite to apply the same configuration."
     echo "  Use --name and --url to set the target sprite's identity."
-    echo "  Tailscale requires a reusable auth key for fully automated setup."
     echo ""
     echo "Environment variables for non-interactive auth:"
     echo "  CLAUDE_CODE_OAUTH_TOKEN  OAuth token from 'claude setup-token' (preserves subscription)"
     echo "  ANTHROPIC_API_KEY        Direct API key (uses API billing, not subscription)"
     echo "  GH_TOKEN                 GitHub Personal Access Token"
-    echo "  TAILSCALE_AUTH_KEY       Tailscale reusable auth key"
     echo "  FLY_API_TOKEN            Fly.io API token (from 'flyctl auth token')"
     echo "  SPRITE_API_TOKEN         Sprite CLI API token (optional)"
+    echo ""
+    echo "Note: Tailscale is not required - using password auth (default: Demopassword)"
     echo ""
     echo "Example with tokens:"
     echo "  GH_TOKEN=ghp_xxx CLAUDE_CODE_OAUTH_TOKEN=xxx $0 3 4"
@@ -1997,12 +1972,23 @@ fi
 
 # Interactive mode
 show_menu
-read -p "Select steps (or 'all'): " selection
 
-if [ "$selection" = "q" ] || [ "$selection" = "quit" ]; then
-    echo "Exiting."
-    exit 0
-fi
+# Read selection from /dev/tty to avoid stdin issues
+while true; do
+    read -p "Select steps (or 'all'): " selection </dev/tty
+
+    if [ "$selection" = "q" ] || [ "$selection" = "quit" ]; then
+        echo "Exiting."
+        exit 0
+    fi
+
+    if [ -z "$selection" ]; then
+        echo "Please enter a selection (e.g., 'all' or '1 2 3')"
+        continue
+    fi
+
+    break
+done
 
 # Prompt for config paste before running steps
 prompt_for_config
@@ -2011,6 +1997,10 @@ if [ "$selection" = "all" ]; then
     run_all_steps
 else
     steps=$(parse_step_range "$selection")
+    if [ -z "$steps" ]; then
+        echo "No valid steps selected."
+        exit 1
+    fi
     for step in $steps; do
         run_step "$step"
     done

@@ -1147,6 +1147,31 @@
       font-size: 14px;
     }
 
+    /* Logout section */
+    .logout-section {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--bg-tertiary);
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: #ff6b6b;
+      border: 1px solid #ff6b6b;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #ff6b6b;
+      color: #fff;
+    }
+
     /* Network sprites section */
     .sprites-section {
       margin-bottom: 16px;

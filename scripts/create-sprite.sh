@@ -3,6 +3,9 @@ set -e
 
 # Helper script to create and configure a new sprite with sprite-mobile
 # Usage: ./create-sprite.sh <sprite-name>
+#
+# Authentication: Uses simple password auth (no Tailscale required)
+# Default password: Demopassword
 
 # Handle Ctrl+C gracefully
 trap 'echo ""; echo "Aborted."; exit 130' INT
@@ -17,6 +20,8 @@ if [ $# -ne 1 ]; then
     echo "  2. Make its URL public"
     echo "  3. Transfer .sprite-config from current sprite"
     echo "  4. Run sprite-setup.sh non-interactively"
+    echo ""
+    echo "Authentication: Password auth (default: Demopassword)"
     exit 1
 fi
 
@@ -74,14 +79,16 @@ echo ""
 echo "Step 3: Transferring configuration..."
 # Create a temporary file with the config, excluding sprite-specific values
 TEMP_CONFIG=$(mktemp)
-# Strip SPRITE_PUBLIC_URL and TAILSCALE_SERVE_URL (unique per sprite)
-grep -v '^SPRITE_PUBLIC_URL=' "$HOME/.sprite-config" 2>/dev/null | grep -v '^TAILSCALE_SERVE_URL=' > "$TEMP_CONFIG" || cat "$HOME/.sprite-config" > "$TEMP_CONFIG"
+# Strip sprite-specific URLs and Tailscale settings (not needed with password auth)
+grep -v '^SPRITE_PUBLIC_URL=' "$HOME/.sprite-config" 2>/dev/null | \
+  grep -v '^TAILSCALE_SERVE_URL=' | \
+  grep -v '^TAILSCALE_AUTH_KEY=' > "$TEMP_CONFIG" || cat "$HOME/.sprite-config" > "$TEMP_CONFIG"
 # Encode as base64 to avoid shell escaping issues
 CONFIG_B64=$(base64 -w0 "$TEMP_CONFIG" 2>/dev/null || base64 "$TEMP_CONFIG" | tr -d '\n')
 rm "$TEMP_CONFIG"
 # Transfer and decode on target
 sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "echo '$CONFIG_B64' | base64 -d > ~/.sprite-config && chmod 600 ~/.sprite-config"
-echo "  Transferred ~/.sprite-config (excluded sprite-specific URLs)"
+echo "  Transferred ~/.sprite-config (excluded sprite-specific URLs and Tailscale)"
 echo ""
 
 # Step 4: Download setup script

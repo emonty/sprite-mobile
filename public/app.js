@@ -1569,6 +1569,21 @@
       refreshNetworkBtn.addEventListener('click', loadNetworkSprites);
     }
 
+    // Logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await fetch('/api/logout', { method: 'POST' });
+          window.location.href = '/login.html';
+        } catch (err) {
+          console.error('Logout failed:', err);
+          // Still redirect - session may be invalid
+          window.location.href = '/login.html';
+        }
+      });
+    }
+
     // Tasks modal
     const tasksBtn = document.getElementById('tasks-btn');
     const tasksModal = document.getElementById('tasks-modal');
