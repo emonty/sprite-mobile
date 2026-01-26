@@ -1612,12 +1612,32 @@ Mobile-friendly web interface for chatting with Claude Code. Located at `~/.spri
 - Auto-updates on service start via `git pull`
 - Supports multiple concurrent chat sessions with persistent history
 - Uses WebSocket for real-time streaming
-- Data stored in `~/.sprite-mobile/data/`
+- Works with claude-hub for multi-client sync
 
 Service command:
 ```bash
 sprite-env services list  # View status
 sprite-env services logs sprite-mobile  # View logs
+```
+
+### claude-hub (port 9090)
+WebSocket hub for multi-client Claude Code session synchronization. Located at `~/.claude-hub/`.
+
+**Features:**
+- Sync messages between sprite-mobile web UI and `claude --resume` terminal sessions
+- Multiple web clients can connect to the same session
+- Real-time streaming of Claude responses to all connected clients
+- File watching to detect terminal sessions
+
+**Usage:**
+1. Start session in sprite-mobile web UI
+2. Run `claude --resume <session-uuid>` in terminal
+3. Hub auto-detects terminal session and syncs messages
+4. All clients (web + terminal) see the same messages
+
+Service command:
+```bash
+sprite-env services logs claude-hub  # View logs
 ```
 
 ### tailnet-gate (port 8080)
@@ -1640,6 +1660,65 @@ Do NOT add "Co-Authored-By" lines to commit messages. Just write normal commit m
 CLAUDE_EOF
 
     echo "Created $CLAUDE_MD_PATH"
+}
+
+step_12_claude_hub() {
+    echo ""
+    echo "=== Step 12: claude-hub Setup ==="
+
+    CLAUDE_HUB_DIR="$HOME/.claude-hub"
+    CLAUDE_HUB_REPO="https://github.com/clouvet/claude-hub.git"
+
+    if [ -d "$CLAUDE_HUB_DIR/.git" ]; then
+        # It's a git repo, pull latest
+        echo "claude-hub already exists, pulling latest..."
+        cd "$CLAUDE_HUB_DIR"
+        git pull
+    elif [ -d "$CLAUDE_HUB_DIR" ]; then
+        # Directory exists but not a git repo - remove and clone fresh
+        echo "claude-hub directory exists but is not a git repo, cloning..."
+        rm -rf "$CLAUDE_HUB_DIR"
+        gh repo clone "$CLAUDE_HUB_REPO" "$CLAUDE_HUB_DIR"
+    else
+        echo "Cloning claude-hub..."
+        gh repo clone "$CLAUDE_HUB_REPO" "$CLAUDE_HUB_DIR"
+    fi
+
+    # Build the Go binary
+    echo "Building claude-hub..."
+    cd "$CLAUDE_HUB_DIR"
+    go build -o bin/claude-hub main.go
+
+    # Ensure service YAML exists
+    SERVICE_YAML="$HOME/.sprite/services/claude-hub.yaml"
+    if [ ! -f "$SERVICE_YAML" ]; then
+        echo "Creating service configuration..."
+        mkdir -p "$HOME/.sprite/services"
+        cat > "$SERVICE_YAML" << SERVICE_EOF
+name: claude-hub
+port: 9090
+command: $CLAUDE_HUB_DIR/scripts/start-service.sh
+workdir: $CLAUDE_HUB_DIR
+description: WebSocket hub for multi-client Claude Code session synchronization
+SERVICE_EOF
+    fi
+
+    # Ensure startup script is executable
+    chmod +x "$CLAUDE_HUB_DIR/scripts/start-service.sh"
+
+    # Check if claude-hub service is running
+    if sprite_api /v1/services 2>/dev/null | grep -q '"claude-hub"'; then
+        echo "claude-hub service already running, restarting..."
+        sprite_api -X DELETE '/v1/services/claude-hub' 2>/dev/null || true
+        sleep 1
+    fi
+
+    echo "Starting claude-hub service on port 9090..."
+    sprite_api -X PUT '/v1/services/claude-hub?duration=3s' -d "{
+      \"cmd\": \"$CLAUDE_HUB_DIR/scripts/start-service.sh\"
+    }"
+
+    echo "claude-hub setup complete"
 }
 
 show_summary() {
@@ -1685,6 +1764,7 @@ STEP_NAMES=(
     "Sprite Network (optional)"
     "Tailnet Gate"
     "CLAUDE.md"
+    "claude-hub"
 )
 
 run_step() {
@@ -1701,6 +1781,7 @@ run_step() {
         9) step_6_5_network ;;
         10) step_10_tailnet_gate ;;
         11) step_11_claude_md ;;
+        12) step_12_claude_hub ;;
         *) echo "Unknown step: $step_num" >&2; return 1 ;;
     esac
 }
@@ -1722,6 +1803,7 @@ show_menu() {
     echo "   9.   Sprite Network (optional)"
     echo "  10.   Tailnet Gate (public entry point)"
     echo "  11.   CLAUDE.md creation"
+    echo "  12.   claude-hub setup (WebSocket hub)"
     echo ""
     echo "Options:"
     echo "  all     - Run all steps sequentially"
@@ -1762,6 +1844,7 @@ run_all_steps() {
     step_6_5_network
     step_10_tailnet_gate
     step_11_claude_md
+    step_12_claude_hub
 
     # Final restart of sprite-mobile to pick up all environment changes
     echo ""

@@ -10,6 +10,71 @@ import {
 // Track all connected clients for broadcast messages (e.g., reload)
 export const allClients = new Set<any>();
 
+// Track hub WebSocket connections per client
+const hubConnections = new Map<any, WebSocket>();
+
+// Proxy WebSocket connection to Go hub
+function proxyToGoHub(clientWs: any, sessionId: string) {
+  const hubUrl = `${GO_HUB_URL}/ws?session=${sessionId}`;
+
+  try {
+    const hubWs = new WebSocket(hubUrl);
+
+    // Store hub connection for this client
+    hubConnections.set(clientWs, hubWs);
+
+    // Forward messages from hub to client
+    hubWs.onmessage = (event: any) => {
+      if (clientWs.readyState === 1) {
+        clientWs.send(event.data);
+      }
+    };
+
+    // Handle hub connection open
+    hubWs.onopen = () => {
+      console.log(`[GO HUB] Connected to hub for session ${sessionId}`);
+    };
+
+    // Handle hub connection close
+    hubWs.onclose = () => {
+      console.log(`[GO HUB] Disconnected from hub for session ${sessionId}`);
+      hubConnections.delete(clientWs);
+      if (clientWs.readyState === 1) {
+        clientWs.close();
+      }
+    };
+
+    // Handle hub connection error
+    hubWs.onerror = (error: any) => {
+      console.error(`[GO HUB] Error for session ${sessionId}:`, error);
+      hubConnections.delete(clientWs);
+      if (clientWs.readyState === 1) {
+        try {
+          clientWs.send(JSON.stringify({
+            type: "error",
+            message: "Failed to connect to Go hub"
+          }));
+        } catch {}
+        clientWs.close();
+      }
+    };
+
+  } catch (error) {
+    console.error(`[GO HUB] Failed to create proxy for session ${sessionId}:`, error);
+    try {
+      clientWs.send(JSON.stringify({
+        type: "error",
+        message: "Failed to connect to Go hub"
+      }));
+    } catch {}
+    clientWs.close();
+  }
+}
+
+// Feature flag for Go hub (set to true to enable proxy mode)
+const USE_GO_HUB = process.env.USE_GO_HUB === "true" || false;
+const GO_HUB_URL = process.env.GO_HUB_URL || "ws://localhost:9090";
+
 export const websocketHandlers = {
   open(ws: any) {
     allClients.add(ws);
@@ -18,6 +83,13 @@ export const websocketHandlers = {
     // Handle keepalive connections
     if (data.type === "keepalive") {
       console.log("Keepalive connection opened");
+      return;
+    }
+
+    // If using Go hub, proxy the connection
+    if (USE_GO_HUB && data.sessionId) {
+      console.log(`[GO HUB] Proxying session ${data.sessionId} to ${GO_HUB_URL}`);
+      proxyToGoHub(ws, data.sessionId);
       return;
     }
 
@@ -86,6 +158,15 @@ export const websocketHandlers = {
 
     // Ignore messages on keepalive connections
     if (wsData.type === "keepalive") return;
+
+    // If using Go hub, forward message to hub
+    if (USE_GO_HUB) {
+      const hubWs = hubConnections.get(ws);
+      if (hubWs && hubWs.readyState === 1) {
+        hubWs.send(message.toString());
+      }
+      return;
+    }
 
     const sessionId = wsData.sessionId;
     if (!sessionId) return;
@@ -252,6 +333,18 @@ export const websocketHandlers = {
     // Handle keepalive disconnections
     if (wsData.type === "keepalive") {
       console.log("Keepalive connection closed");
+      return;
+    }
+
+    // If using Go hub, close hub connection
+    if (USE_GO_HUB) {
+      const hubWs = hubConnections.get(ws);
+      if (hubWs) {
+        hubConnections.delete(ws);
+        if (hubWs.readyState === 1) {
+          hubWs.close();
+        }
+      }
       return;
     }
 
