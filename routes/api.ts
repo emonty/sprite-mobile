@@ -285,18 +285,27 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
   if (req.method === "POST" && path.match(/^\/api\/sessions\/[^/]+\/regenerate-title$/)) {
     return (async () => {
       const id = path.split("/")[3];
-      const session = getSession(id);
-      if (!session) return new Response("Not found", { status: 404 });
 
-      // Read messages directly from Claude's .jsonl session file
-      // Convert cwd to directory name format (e.g., "/home/sprite" -> "-home-sprite")
-      const cwdDir = (session.cwd || "/home/sprite").replace(/\//g, "-");
-      const claudeSessionFile = join(CLAUDE_PROJECTS_DIR, cwdDir, `${id}.jsonl`);
-      let messages: Array<{ role: string; content: string }> = [];
+      // Find Claude session file by scanning all cwd directories
+      // Claude's files are the source of truth - no need for sprite-mobile metadata
+      let claudeSessionFile: string | null = null;
 
-      if (!existsSync(claudeSessionFile)) {
+      if (existsSync(CLAUDE_PROJECTS_DIR)) {
+        const cwdDirs = readdirSync(CLAUDE_PROJECTS_DIR);
+        for (const cwdDir of cwdDirs) {
+          const candidateFile = join(CLAUDE_PROJECTS_DIR, cwdDir, `${id}.jsonl`);
+          if (existsSync(candidateFile)) {
+            claudeSessionFile = candidateFile;
+            break;
+          }
+        }
+      }
+
+      if (!claudeSessionFile) {
         return new Response("No Claude session file found", { status: 404 });
       }
+
+      let messages: Array<{ role: string; content: string }> = [];
 
       try {
         const content = readFileSync(claudeSessionFile, "utf-8");
@@ -436,16 +445,30 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
       }
 
       const session = getSession(id);
-      if (!session) {
-        return new Response("Session not found", { status: 404 });
-      }
 
-      // Update session metadata
-      const preview = content.slice(0, 100);
-      updateSession(id, {
-        lastMessage: preview,
-        lastMessageAt: Date.now()
-      });
+      // If session doesn't exist in sprite-mobile metadata, that's OK
+      // Claude files are source of truth - we just maintain lightweight metadata for UI
+      if (!session) {
+        const sessions = loadSessions();
+        const preview = content.slice(0, 100);
+        const newSession = {
+          id,
+          name: role === 'user' ? preview : "New Chat",
+          cwd: process.env.HOME || "/home/sprite",
+          createdAt: Date.now(),
+          lastMessageAt: Date.now(),
+          lastMessage: preview,
+        };
+        sessions.unshift(newSession);
+        saveSessions(sessions);
+      } else {
+        // Update existing metadata
+        const preview = content.slice(0, 100);
+        updateSession(id, {
+          lastMessage: preview,
+          lastMessageAt: Date.now()
+        });
+      }
 
       return Response.json({ success: true });
     })();
