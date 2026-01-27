@@ -1,4 +1,4 @@
-# sprite-api CLI
+# vibe-link CLI
 
 A command-line utility for interacting with the Sprite Console API. This tool allows you to create sprites and connect to their interactive consoles via HTTP/WebSocket, without needing SSH access.
 
@@ -20,7 +20,7 @@ A command-line utility for interacting with the Sprite Console API. This tool al
 ### Build from Source
 
 ```bash
-cd ~/.sprite-mobile/cmd/sprite-api
+cd ~/.sprite-mobile/cmd/vibe-link
 
 # Download dependencies
 go mod download
@@ -35,7 +35,7 @@ make install
 Or build manually:
 
 ```bash
-go build -o sprite-api .
+go build -o vibe-link .
 ```
 
 ### Add to PATH
@@ -54,16 +54,16 @@ Add this to your `~/.bashrc` or `~/.zshrc` to make it permanent.
 
 ```bash
 # Show help
-sprite-api help
+vibe-link help
 
 # Show version
-sprite-api version
+vibe-link version
 
 # Create a sprite
-sprite-api create <sprite-name> -key <api-key>
+vibe-link create <sprite-name> -key <api-key>
 
 # Connect to sprite console
-sprite-api console <sprite-name> -key <api-key>
+vibe-link console <sprite-name> -key <api-key>
 ```
 
 ### Create a Sprite
@@ -71,10 +71,10 @@ sprite-api console <sprite-name> -key <api-key>
 Create a new sprite with the given name:
 
 ```bash
-sprite-api create my-new-sprite -key sk_test_12345
+vibe-link create my-new-sprite -key sk_test_12345
 
 # With custom URL
-sprite-api create my-new-sprite \
+vibe-link create my-new-sprite \
   -url https://my-sprite.fly.dev \
   -key sk_test_12345
 ```
@@ -94,10 +94,10 @@ Output:
 Connect to an interactive sprite console:
 
 ```bash
-sprite-api console my-sprite -key sk_test_12345
+vibe-link console my-sprite -key sk_test_12345
 
 # With custom URL
-sprite-api console my-sprite \
+vibe-link console my-sprite \
   -url wss://my-sprite.fly.dev \
   -key sk_test_12345
 ```
@@ -116,8 +116,8 @@ export SPRITE_API_KEY=sk_test_12345
 export SPRITE_API_URL=https://my-sprite.fly.dev
 
 # Now you can omit the flags
-sprite-api create my-new-sprite
-sprite-api console my-sprite
+vibe-link create my-new-sprite
+vibe-link console my-sprite
 ```
 
 Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make them permanent.
@@ -153,10 +153,10 @@ export SPRITE_API_KEY=sk_test_12345
 export SPRITE_API_URL=https://sprite.example.com
 
 # Create a new sprite
-sprite-api create dev-environment
+vibe-link create dev-environment
 
 # Connect to its console
-sprite-api console dev-environment
+vibe-link console dev-environment
 
 # Once connected, you can run commands
 whoami
@@ -169,11 +169,11 @@ exit
 
 ```bash
 # Using local sprite-mobile instance
-sprite-api create test-sprite \
+vibe-link create test-sprite \
   -url http://localhost:8081 \
   -key sk_local_test_key
 
-sprite-api console test-sprite \
+vibe-link console test-sprite \
   -url ws://localhost:8081 \
   -key sk_local_test_key
 ```
@@ -182,7 +182,7 @@ sprite-api console test-sprite \
 
 ```bash
 # Connect to a remote sprite
-sprite-api console production-app \
+vibe-link console production-app \
   -url wss://my-sprite.fly.dev \
   -key sk_prod_key_12345
 ```
@@ -212,11 +212,11 @@ make build-all
 ```
 
 This creates:
-- `sprite-api-linux-amd64`
-- `sprite-api-linux-arm64`
-- `sprite-api-darwin-amd64` (Intel Mac)
-- `sprite-api-darwin-arm64` (Apple Silicon)
-- `sprite-api-windows-amd64.exe`
+- `vibe-link-linux-amd64`
+- `vibe-link-linux-arm64`
+- `vibe-link-darwin-amd64` (Intel Mac)
+- `vibe-link-darwin-arm64` (Apple Silicon)
+- `vibe-link-windows-amd64.exe`
 
 ## Troubleshooting
 
@@ -255,7 +255,7 @@ Or press `Ctrl+C` to force exit, which should restore the terminal.
 ### Project Structure
 
 ```
-cmd/sprite-api/
+cmd/vibe-link/
 ├── main.go          # Main application code
 ├── go.mod           # Go module definition
 ├── Makefile         # Build automation

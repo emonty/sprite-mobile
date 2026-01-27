@@ -1,4 +1,4 @@
-# sprite-api CLI Implementation
+# vibe-link CLI Implementation
 
 ## Overview
 
@@ -9,7 +9,7 @@ A Go-based CLI utility for interacting with the Sprite Console API. Provides com
 ### Command Structure
 
 ```
-sprite-api
+vibe-link
 ├── create   - Create a new sprite via REST API
 ├── console  - Connect to sprite console via WebSocket
 ├── version  - Show version information
@@ -147,15 +147,15 @@ main.go (530 lines)
 ### Local Build
 
 ```bash
-go build -o sprite-api .
+go build -o vibe-link .
 ```
 
 ### Cross-Platform Build
 
 ```bash
-GOOS=linux GOARCH=amd64 go build -o sprite-api-linux-amd64 .
-GOOS=darwin GOARCH=arm64 go build -o sprite-api-darwin-arm64 .
-GOOS=windows GOARCH=amd64 go build -o sprite-api-windows-amd64.exe .
+GOOS=linux GOARCH=amd64 go build -o vibe-link-linux-amd64 .
+GOOS=darwin GOARCH=arm64 go build -o vibe-link-darwin-arm64 .
+GOOS=windows GOARCH=amd64 go build -o vibe-link-windows-amd64.exe .
 ```
 
 ### Using Makefile
@@ -173,13 +173,13 @@ make clean       # Remove build artifacts
 
 ```bash
 # Test help
-./sprite-api help
+./vibe-link help
 
 # Test create (requires valid API key)
-./sprite-api create test-sprite -key sk_test_12345 -url http://localhost:8081
+./vibe-link create test-sprite -key sk_test_12345 -url http://localhost:8081
 
 # Test console (requires existing sprite)
-./sprite-api console test-sprite -key sk_test_12345 -url ws://localhost:8081
+./vibe-link console test-sprite -key sk_test_12345 -url ws://localhost:8081
 ```
 
 ### Integration Testing
@@ -250,7 +250,7 @@ make clean       # Remove build artifacts
 
 ## Comparison with Alternatives
 
-| Feature | sprite-api | sprite CLI | SSH |
+| Feature | vibe-link | sprite CLI | SSH |
 |---------|-----------|-----------|-----|
 | Create sprites | ✅ | ✅ | ❌ |
 | Console access | ✅ | ✅ | ✅ |
@@ -263,7 +263,7 @@ make clean       # Remove build artifacts
 ## Files
 
 ```
-cmd/sprite-api/
+cmd/vibe-link/
 ├── main.go              # Main application code (530 lines)
 ├── go.mod               # Go module definition
 ├── go.sum               # Dependency checksums
@@ -273,7 +273,7 @@ cmd/sprite-api/
 ├── QUICKSTART.md        # Quick start guide
 ├── IMPLEMENTATION.md    # This file
 └── bin/                 # Build output (gitignored)
-    └── sprite-api       # Compiled binary
+    └── vibe-link       # Compiled binary
 ```
 
 ## License

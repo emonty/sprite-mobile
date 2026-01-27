@@ -194,7 +194,7 @@ Claude will use `create-sprite.sh` to handle the entire process automatically.
 
 ## CLI Tool
 
-sprite-mobile includes a Go-based CLI utility (`sprite-api`) for interacting with the Sprite Console API from the command line. This tool allows you to create sprites and connect to their interactive consoles via HTTP/WebSocket, without needing SSH access.
+sprite-mobile includes a Go-based CLI utility (`vibe-link`) for interacting with the Sprite Console API from the command line. This tool allows you to create sprites and connect to their interactive consoles via HTTP/WebSocket, without needing SSH access.
 
 ### Features
 
@@ -208,7 +208,7 @@ sprite-mobile includes a Go-based CLI utility (`sprite-api`) for interacting wit
 
 ```bash
 # Build the CLI tool
-cd ~/.sprite-mobile/cmd/sprite-api
+cd ~/.sprite-mobile/cmd/vibe-link
 make build
 
 # Set up environment
@@ -216,10 +216,10 @@ export SPRITE_API_KEY=sk_your_api_key_here
 export SPRITE_API_URL=http://localhost:8081
 
 # Create a new sprite
-./bin/sprite-api create my-new-sprite
+./bin/vibe-link create my-new-sprite
 
 # Connect to sprite console
-./bin/sprite-api console my-new-sprite
+./bin/vibe-link console my-new-sprite
 ```
 
 ### Install Globally
@@ -229,17 +229,17 @@ make install
 export PATH="$PATH:$HOME/bin"
 ```
 
-Now you can use `sprite-api` from anywhere:
+Now you can use `vibe-link` from anywhere:
 
 ```bash
-sprite-api create dev-environment
-sprite-api console dev-environment
+vibe-link create dev-environment
+vibe-link console dev-environment
 ```
 
 ### Documentation
 
-- [CLI Tool README](cmd/sprite-api/README.md) - Complete documentation
-- [Quick Start Guide](cmd/sprite-api/QUICKSTART.md) - Get started in 5 minutes
+- [CLI Tool README](cmd/vibe-link/README.md) - Complete documentation
+- [Quick Start Guide](cmd/vibe-link/QUICKSTART.md) - Get started in 5 minutes
 - [Console API Documentation](CONSOLE_API.md) - WebSocket API details
 
 ## Prerequisites

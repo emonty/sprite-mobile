@@ -1,7 +1,7 @@
 .PHONY: build install clean test
 
 # Binary name
-BINARY_NAME=sprite-api
+BINARY_NAME=vibe-link
 
 # Build directory
 BUILD_DIR=bin

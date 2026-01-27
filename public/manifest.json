@@ -1,6 +1,6 @@
 {
-  "name": "Sprite Mobile",
-  "short_name": "Sprite",
+  "name": "Vibe-Link",
+  "short_name": "Vibe-Link",
   "description": "Mobile interface for chatting with Claude Code on a Sprite",
   "start_url": "/",
   "display": "standalone",

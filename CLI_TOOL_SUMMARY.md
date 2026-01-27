@@ -2,7 +2,7 @@
 
 ## What Was Built
 
-A complete Go-based CLI utility (`sprite-api`) that provides command-line access to the Sprite Console API, enabling users to:
+A complete Go-based CLI utility (`vibe-link`) that provides command-line access to the Sprite Console API, enabling users to:
 
 1. **Create sprites** via REST API call to `/api/sprites/create`
 2. **Connect to sprite consoles** via WebSocket at `/api/sprites/:name/console`
@@ -13,22 +13,22 @@ Both features use API key authentication and work without SSH access.
 
 ```bash
 # Build the tool
-cd ~/.sprite-mobile/cmd/sprite-api && make build
+cd ~/.sprite-mobile/cmd/vibe-link && make build
 
 # Set credentials
 export SPRITE_API_KEY=sk_your_api_key_here
 
 # Create a sprite
-./bin/sprite-api create my-new-sprite
+./bin/vibe-link create my-new-sprite
 
 # Connect to its console
-./bin/sprite-api console my-new-sprite
+./bin/vibe-link console my-new-sprite
 ```
 
 ## Project Structure
 
 ```
-cmd/sprite-api/
+cmd/vibe-link/
 ├── main.go                 # Complete CLI implementation (530 lines)
 │   ├── create command      # REST API call to create sprites
 │   ├── console command     # WebSocket connection to sprite console
@@ -50,7 +50,7 @@ cmd/sprite-api/
 Creates a new sprite via the REST API:
 
 ```bash
-sprite-api create <sprite-name> [-url <base-url>] [-key <api-key>]
+vibe-link create <sprite-name> [-url <base-url>] [-key <api-key>]
 ```
 
 **Features:**
@@ -62,7 +62,7 @@ sprite-api create <sprite-name> [-url <base-url>] [-key <api-key>]
 
 **Example:**
 ```bash
-$ sprite-api create dev-environment -key sk_test_12345
+$ vibe-link create dev-environment -key sk_test_12345
 
 Creating sprite: dev-environment
 ✓ Sprite created successfully: dev-environment
@@ -77,7 +77,7 @@ Output:
 Connects to an interactive sprite console:
 
 ```bash
-sprite-api console <sprite-name> [-url <base-url>] [-key <api-key>]
+vibe-link console <sprite-name> [-url <base-url>] [-key <api-key>]
 ```
 
 **Features:**
@@ -89,7 +89,7 @@ sprite-api console <sprite-name> [-url <base-url>] [-key <api-key>]
 
 **Example:**
 ```bash
-$ sprite-api console dev-environment -key sk_test_12345
+$ vibe-link console dev-environment -key sk_test_12345
 
 Connecting to dev-environment console...
 ✓ Connected to dev-environment console
@@ -107,14 +107,14 @@ Multiple ways to configure:
 
 **Flags:**
 ```bash
-sprite-api create my-sprite -url http://localhost:8081 -key sk_test
+vibe-link create my-sprite -url http://localhost:8081 -key sk_test
 ```
 
 **Environment Variables:**
 ```bash
 export SPRITE_API_KEY=sk_test_12345
 export SPRITE_API_URL=http://localhost:8081
-sprite-api create my-sprite
+vibe-link create my-sprite
 ```
 
 **Precedence:** Flags > Environment Variables > Defaults
@@ -241,14 +241,14 @@ The CLI tool integrates seamlessly with the sprite-mobile API:
 
 ```bash
 # One-time setup
-cd ~/.sprite-mobile/cmd/sprite-api
+cd ~/.sprite-mobile/cmd/vibe-link
 make install
 export SPRITE_API_KEY=sk_your_key
 
 # Use anywhere
-sprite-api create frontend
-sprite-api create backend
-sprite-api console frontend
+vibe-link create frontend
+vibe-link create backend
+vibe-link console frontend
 ```
 
 ### Example 2: Automation
@@ -259,7 +259,7 @@ sprite-api console frontend
 
 export SPRITE_API_KEY=sk_prod_key
 
-sprite-api create dev-environment
+vibe-link create dev-environment
 
 sleep 10
 
@@ -269,7 +269,7 @@ sprite -s dev-environment exec -- bash -c '
   npm install
 '
 
-echo "Done! Connect: sprite-api console dev-environment"
+echo "Done! Connect: vibe-link console dev-environment"
 ```
 
 ### Example 3: Multi-Environment
@@ -277,15 +277,15 @@ echo "Done! Connect: sprite-api console dev-environment"
 ```bash
 # Production
 export SPRITE_API_URL=https://prod.fly.dev
-sprite-api console production-app
+vibe-link console production-app
 
 # Staging
 export SPRITE_API_URL=https://staging.fly.dev
-sprite-api console staging-app
+vibe-link console staging-app
 
 # Local
 export SPRITE_API_URL=http://localhost:8081
-sprite-api console local-dev
+vibe-link console local-dev
 ```
 
 ## Testing
@@ -331,38 +331,38 @@ Ready to test with actual API:
 ## Files Created
 
 ### Source Code
-- `cmd/sprite-api/main.go` (530 lines)
-- `cmd/sprite-api/go.mod`
-- `cmd/sprite-api/go.sum`
-- `cmd/sprite-api/Makefile`
-- `cmd/sprite-api/.gitignore`
+- `cmd/vibe-link/main.go` (530 lines)
+- `cmd/vibe-link/go.mod`
+- `cmd/vibe-link/go.sum`
+- `cmd/vibe-link/Makefile`
+- `cmd/vibe-link/.gitignore`
 
 ### Documentation
-- `cmd/sprite-api/README.md` (270 lines)
-- `cmd/sprite-api/QUICKSTART.md` (280 lines)
-- `cmd/sprite-api/IMPLEMENTATION.md` (320 lines)
+- `cmd/vibe-link/README.md` (270 lines)
+- `cmd/vibe-link/QUICKSTART.md` (280 lines)
+- `cmd/vibe-link/IMPLEMENTATION.md` (320 lines)
 - `CLI_TOOL_SUMMARY.md` (this file)
 
 ### Updated Files
 - `README.md` - Added CLI Tool section
 
 ### Binary
-- `cmd/sprite-api/bin/sprite-api` (built and tested)
+- `cmd/vibe-link/bin/vibe-link` (built and tested)
 
 ## Next Steps
 
 ### To Use
 
-1. Build: `cd ~/.sprite-mobile/cmd/sprite-api && make build`
+1. Build: `cd ~/.sprite-mobile/cmd/vibe-link && make build`
 2. Set key: `export SPRITE_API_KEY=sk_your_key`
-3. Create: `./bin/sprite-api create my-sprite`
-4. Connect: `./bin/sprite-api console my-sprite`
+3. Create: `./bin/vibe-link create my-sprite`
+4. Connect: `./bin/vibe-link console my-sprite`
 
 ### To Install
 
 1. Run: `make install`
 2. Add to PATH: `export PATH="$PATH:$HOME/bin"`
-3. Use anywhere: `sprite-api console my-sprite`
+3. Use anywhere: `vibe-link console my-sprite`
 
 ### To Extend
 
@@ -375,7 +375,7 @@ See `IMPLEMENTATION.md` section "Future Enhancements" for ideas:
 
 ## Conclusion
 
-The `sprite-api` CLI tool provides a complete, production-ready interface to the Sprite Console API. It's well-documented, thoroughly tested, and ready to use. The tool enables:
+The `vibe-link` CLI tool provides a complete, production-ready interface to the Sprite Console API. It's well-documented, thoroughly tested, and ready to use. The tool enables:
 
 1. ✅ Creating sprites via REST API
 2. ✅ Connecting to sprite consoles via WebSocket

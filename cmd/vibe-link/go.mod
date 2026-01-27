@@ -1,4 +1,4 @@
-module github.com/emonty/sprite-mobile/cmd/sprite-api
+module github.com/emonty/sprite-mobile/cmd/vibe-link
 
 go 1.21
 

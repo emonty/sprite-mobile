@@ -50,7 +50,7 @@ func main() {
 	case "console":
 		consoleCommand()
 	case "version":
-		fmt.Printf("sprite-api version %s\n", version)
+		fmt.Printf("vibe-link version %s\n", version)
 	case "help", "-h", "--help":
 		printUsage()
 	default:
@@ -61,10 +61,10 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`sprite-api - CLI utility for Sprite Console API
+	fmt.Println(`vibe-link - CLI utility for Sprite Console API
 
 Usage:
-  sprite-api <command> [options]
+  vibe-link <command> [options]
 
 Commands:
   create <name>              Create a new sprite
@@ -86,16 +86,16 @@ Environment Variables:
 
 Examples:
   # Create a new sprite
-  sprite-api create my-new-sprite -key sk_test_12345
+  vibe-link create my-new-sprite -key sk_test_12345
 
   # Connect to sprite console
-  sprite-api console my-sprite -key sk_test_12345
+  vibe-link console my-sprite -key sk_test_12345
 
   # Using environment variables
   export SPRITE_API_KEY=sk_test_12345
   export SPRITE_API_URL=https://my-sprite.fly.dev
-  sprite-api create my-new-sprite
-  sprite-api console my-sprite
+  vibe-link create my-new-sprite
+  vibe-link console my-sprite
 `)
 }
 
@@ -108,7 +108,7 @@ func createCommand() {
 
 	if createFlags.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "Error: sprite name required")
-		fmt.Fprintln(os.Stderr, "Usage: sprite-api create <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Usage: vibe-link create <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
@@ -144,7 +144,7 @@ func consoleCommand() {
 
 	if consoleFlags.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "Error: sprite name required")
-		fmt.Fprintln(os.Stderr, "Usage: sprite-api console <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Usage: vibe-link console <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
