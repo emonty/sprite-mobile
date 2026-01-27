@@ -6,7 +6,7 @@ import { handleApi } from "./routes/api";
 import { websocketHandlers, allClients } from "./routes/websocket";
 import { initNetwork, registerSprite, updateHeartbeat, buildSpriteRegistration, isNetworkEnabled } from "./lib/network";
 import { initTasksNetwork } from "./lib/distributed-tasks";
-import { getSessionFromCookie, validateSession, requiresAuth } from "./lib/auth";
+import { getSessionFromCookie, validateSession, requiresAuth, validateApiKey } from "./lib/auth";
 
 // Load .env file if present
 const ENV_FILE = join(import.meta.dir, ".env");
@@ -109,6 +109,26 @@ const server = Bun.serve({
 
       const upgraded = server.upgrade(req, {
         data: { sessionId, cwd: session.cwd, claudeSessionId: session.claudeSessionId }
+      });
+      if (!upgraded) return new Response("WebSocket upgrade failed", { status: 400 });
+      return undefined;
+    }
+
+    // Sprite Console WebSocket - API key authenticated
+    if (url.pathname.match(/^\/api\/sprites\/[^/]+\/console$/)) {
+      const spriteName = url.pathname.split("/")[3];
+
+      // Validate API key
+      const authHeader = req.headers.get("Authorization");
+      if (!validateApiKey(authHeader)) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: { "WWW-Authenticate": 'Basic realm="API Key Required"' }
+        });
+      }
+
+      const upgraded = server.upgrade(req, {
+        data: { type: "sprite-console", spriteName }
       });
       if (!upgraded) return new Response("WebSocket upgrade failed", { status: 400 });
       return undefined;

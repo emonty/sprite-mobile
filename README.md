@@ -12,6 +12,7 @@ sprite-mobile gives you a progressive web app chat UI for accessing Claude Code 
 
 - [Sprite Setup](#sprite-setup)
 - [Sprite Orchestration](#sprite-orchestration)
+- [CLI Tool](#cli-tool)
 - [Prerequisites](#prerequisites)
 - [Claude Code Integration](#claude-code-integration)
 - [Features](#features)
@@ -191,7 +192,55 @@ With orchestration configured, you can simply tell Claude Code:
 
 Claude will use `create-sprite.sh` to handle the entire process automatically.
 
+## CLI Tool
 
+sprite-mobile includes a Go-based CLI utility (`sprite-api`) for interacting with the Sprite Console API from the command line. This tool allows you to create sprites and connect to their interactive consoles via HTTP/WebSocket, without needing SSH access.
+
+### Features
+
+- **Create Sprites**: Create new sprites via REST API
+- **Console Access**: Connect to sprite console shells via WebSocket with full terminal support
+- **API Key Authentication**: Secure authentication using API keys
+- **Raw Terminal Mode**: Full TTY handling with special keys support
+- **Environment Variables**: Configure via `SPRITE_API_KEY` and `SPRITE_API_URL`
+
+### Quick Start
+
+```bash
+# Build the CLI tool
+cd ~/.sprite-mobile/cmd/sprite-api
+make build
+
+# Set up environment
+export SPRITE_API_KEY=sk_your_api_key_here
+export SPRITE_API_URL=http://localhost:8081
+
+# Create a new sprite
+./bin/sprite-api create my-new-sprite
+
+# Connect to sprite console
+./bin/sprite-api console my-new-sprite
+```
+
+### Install Globally
+
+```bash
+make install
+export PATH="$PATH:$HOME/bin"
+```
+
+Now you can use `sprite-api` from anywhere:
+
+```bash
+sprite-api create dev-environment
+sprite-api console dev-environment
+```
+
+### Documentation
+
+- [CLI Tool README](cmd/sprite-api/README.md) - Complete documentation
+- [Quick Start Guide](cmd/sprite-api/QUICKSTART.md) - Get started in 5 minutes
+- [Console API Documentation](CONSOLE_API.md) - WebSocket API details
 
 ## Prerequisites
 
@@ -635,6 +684,8 @@ Claude's `.jsonl` files are the source of truth. Sprite-mobile only maintains li
 | POST | `/api/sprites` | Add a Sprite profile |
 | PATCH | `/api/sprites/:id` | Update a Sprite profile |
 | DELETE | `/api/sprites/:id` | Remove a Sprite profile |
+| POST | `/api/sprites/create` | Create a new sprite (API key auth) |
+| WebSocket | `/api/sprites/:name/console` | Connect to a sprite's console shell (API key auth) |
 | GET | `/api/network/status` | Check if sprite network is configured |
 | GET | `/api/network/sprites` | Discover sprites in the network |
 | POST | `/api/network/heartbeat` | Manual heartbeat trigger |
@@ -686,6 +737,31 @@ Connect to `/ws?session={sessionId}` to interact with a chat session.
 - claude-hub spawns Claude, which generates its own session UUID
 - `init` message updates the frontend to use Claude's UUID
 - URL hash, session metadata, and `.jsonl` files all sync to Claude's UUID
+
+### Sprite Console WebSocket
+
+Connect to a sprite's interactive console shell via WebSocket at `/api/sprites/:name/console`. This endpoint provides bidirectional terminal access to any sprite you have access to.
+
+**Authentication:** Uses HTTP Basic Authentication with API key (must start with `sk_` or `rk_`)
+
+**Example:**
+```javascript
+const ws = new WebSocket('ws://localhost:8081/api/sprites/my-sprite/console', {
+  headers: {
+    'Authorization': `Basic ${btoa('sk_your_api_key:x')}`
+  }
+});
+
+// Send commands
+ws.send('whoami\n');
+
+// Receive output
+ws.onmessage = (event) => {
+  console.log(event.data); // Raw terminal output
+};
+```
+
+See [CONSOLE_API.md](CONSOLE_API.md) for complete documentation and examples in multiple languages.
 
 ### Keepalive
 

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprite Console Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #header {
+      background: #2d2d30;
+      padding: 16px 24px;
+      border-bottom: 1px solid #3e3e42;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #header h1 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #cccccc;
+    }
+
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+
+    .status-dot.connected {
+      background: #4ec9b0;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    #terminal-container {
+      flex: 1;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    #connection-form {
+      background: #252526;
+      padding: 24px;
+      border-radius: 8px;
+      max-width: 500px;
+      margin: 40px auto;
+    }
+
+    #connection-form h2 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      color: #cccccc;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #cccccc;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #3c3c3c;
+      border: 1px solid #3e3e42;
+      border-radius: 4px;
+      color: #cccccc;
+      font-size: 14px;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #007acc;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #0e639c;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1177bb;
+    }
+
+    button:disabled {
+      background: #3c3c3c;
+      cursor: not-allowed;
+    }
+
+    #error {
+      display: none;
+      margin-top: 16px;
+      padding: 12px;
+      background: #5a1d1d;
+      border: 1px solid #8e3838;
+      border-radius: 4px;
+      color: #f48771;
+      font-size: 14px;
+    }
+
+    #terminal {
+      height: 100%;
+      display: none;
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 12px;
+      background: #2d2d30;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Sprite Console Terminal</h1>
+    <div id="status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Disconnected</span>
+    </div>
+  </div>
+
+  <div id="terminal-container">
+    <form id="connection-form">
+      <h2>Connect to Sprite</h2>
+
+      <div class="form-group">
+        <label for="sprite-name">Sprite Name</label>
+        <input type="text" id="sprite-name" placeholder="my-sprite" required>
+      </div>
+
+      <div class="form-group">
+        <label for="api-key">API Key</label>
+        <input type="password" id="api-key" placeholder="sk_..." required>
+      </div>
+
+      <div class="form-group">
+        <label for="ws-url">WebSocket URL</label>
+        <input type="text" id="ws-url" value="ws://localhost:8081" required>
+      </div>
+
+      <button type="submit">Connect</button>
+
+      <div id="error"></div>
+
+      <div class="note">
+        <strong>Note:</strong> Your API key must start with <code>sk_</code> or <code>rk_</code>.
+        It will be used to authenticate with the sprite console API.
+      </div>
+    </form>
+
+    <div id="terminal"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+  <script>
+    let ws = null;
+    let term = null;
+    let fitAddon = null;
+
+    const form = document.getElementById('connection-form');
+    const terminalDiv = document.getElementById('terminal');
+    const errorDiv = document.getElementById('error');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    function showError(message) {
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      errorDiv.style.display = 'none';
+    }
+
+    function updateStatus(connected) {
+      if (connected) {
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected';
+      } else {
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Disconnected';
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      hideError();
+
+      const spriteName = document.getElementById('sprite-name').value.trim();
+      const apiKey = document.getElementById('api-key').value.trim();
+      const wsUrl = document.getElementById('ws-url').value.trim();
+
+      if (!apiKey.startsWith('sk_') && !apiKey.startsWith('rk_')) {
+        showError('API key must start with "sk_" or "rk_"');
+        return;
+      }
+
+      connect(wsUrl, spriteName, apiKey);
+    });
+
+    function connect(baseUrl, spriteName, apiKey) {
+      const url = `${baseUrl}/api/sprites/${encodeURIComponent(spriteName)}/console`;
+
+      // Encode credentials for Basic Auth
+      const credentials = btoa(`${apiKey}:x`);
+
+      // Note: WebSocket constructor doesn't support headers in browsers
+      // For browser usage, you'd need to use a library or handle auth differently
+      // This example shows the concept - in production, you'd need a proper auth flow
+      console.log(`Connecting to: ${url}`);
+      console.log(`Auth header would be: Basic ${credentials}`);
+
+      // For demonstration, we'll connect without auth headers
+      // In a real implementation, you'd need server-side support or a proxy
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        updateStatus(true);
+
+        // Hide form, show terminal
+        form.style.display = 'none';
+        terminalDiv.style.display = 'block';
+
+        // Initialize xterm.js
+        term = new Terminal({
+          cursorBlink: true,
+          fontSize: 14,
+          fontFamily: '"Cascadia Code", Menlo, Monaco, "Courier New", monospace',
+          theme: {
+            background: '#1e1e1e',
+            foreground: '#d4d4d4',
+            cursor: '#d4d4d4',
+            black: '#000000',
+            red: '#cd3131',
+            green: '#0dbc79',
+            yellow: '#e5e510',
+            blue: '#2472c8',
+            magenta: '#bc3fbc',
+            cyan: '#11a8cd',
+            white: '#e5e5e5',
+            brightBlack: '#666666',
+            brightRed: '#f14c4c',
+            brightGreen: '#23d18b',
+            brightYellow: '#f5f543',
+            brightBlue: '#3b8eea',
+            brightMagenta: '#d670d6',
+            brightCyan: '#29b8db',
+            brightWhite: '#e5e5e5'
+          }
+        });
+
+        fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+
+        term.open(terminalDiv);
+        fitAddon.fit();
+
+        // Handle terminal input
+        term.onData((data) => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(data);
+          }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+          if (fitAddon) fitAddon.fit();
+        });
+      };
+
+      ws.onmessage = (event) => {
+        if (term) {
+          // Write output to terminal
+          if (typeof event.data === 'string') {
+            term.write(event.data);
+          } else if (event.data instanceof Blob) {
+            event.data.text().then(text => term.write(text));
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        showError('Connection error. Check console for details.');
+      };
+
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason);
+        updateStatus(false);
+
+        if (term) {
+          term.write('\r\n\r\n[Connection closed]\r\n');
+          term.write(`Press F5 to reconnect\r\n`);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

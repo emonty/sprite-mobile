@@ -1,6 +1,8 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import type { BackgroundProcess, StoredMessage } from "../lib/types";
+import type { Subprocess } from "bun";
+import { spawn } from "bun";
 import { loadMessages, saveMessage, getSession, updateSession, UPLOADS_DIR, getInProgressMessage } from "../lib/storage";
 import {
   backgroundProcesses, spawnClaude, generateChatName,
@@ -12,6 +14,14 @@ export const allClients = new Set<any>();
 
 // Track hub WebSocket connections per client
 const hubConnections = new Map<any, WebSocket>();
+
+// Track sprite console connections
+interface SpriteConsoleConnection {
+  process: Subprocess;
+  ws: any;
+  spriteName: string;
+}
+const spriteConsoleConnections = new Map<any, SpriteConsoleConnection>();
 
 // Start keepalive session to keep sprite awake during generation
 async function startKeepalive() {
@@ -92,7 +102,87 @@ const GO_HUB_URL = process.env.GO_HUB_URL || "ws://localhost:9090";
 export const websocketHandlers = {
   open(ws: any) {
     allClients.add(ws);
-    const data = ws.data as { type?: string; sessionId?: string; cwd?: string; claudeSessionId?: string };
+    const data = ws.data as { type?: string; sessionId?: string; cwd?: string; claudeSessionId?: string; spriteName?: string };
+
+    // Handle sprite console connections
+    if (data.type === "sprite-console" && data.spriteName) {
+      const spriteName = data.spriteName;
+      console.log(`[Sprite Console] Opening console for sprite: ${spriteName}`);
+
+      try {
+        // Load sprite config to get organization
+        const spriteConfigPath = join(process.env.HOME || "/home/sprite", ".sprite-config");
+        let org = "";
+        if (existsSync(spriteConfigPath)) {
+          const config = readFileSync(spriteConfigPath, "utf-8");
+          const orgMatch = config.match(/^SPRITE_ORG=(.+)$/m);
+          if (orgMatch) org = orgMatch[1].trim();
+        }
+
+        // Spawn sprite console process
+        const args = ["console"];
+        if (org) {
+          args.push("-o", org);
+        }
+        args.push("-s", spriteName);
+
+        console.log(`[Sprite Console] Spawning: sprite ${args.join(" ")}`);
+
+        const process = spawn({
+          cmd: ["sprite", ...args],
+          stdin: "pipe",
+          stdout: "pipe",
+          stderr: "pipe",
+          env: process.env,
+        });
+
+        spriteConsoleConnections.set(ws, { process, ws, spriteName });
+
+        // Forward stdout to WebSocket
+        (async () => {
+          try {
+            for await (const chunk of process.stdout) {
+              if (ws.readyState === 1) {
+                // Send raw bytes to client
+                ws.send(chunk);
+              }
+            }
+          } catch (err) {
+            console.error(`[Sprite Console] Error reading stdout:`, err);
+          }
+        })();
+
+        // Forward stderr to WebSocket
+        (async () => {
+          try {
+            for await (const chunk of process.stderr) {
+              if (ws.readyState === 1) {
+                // Send raw bytes to client (stderr is also important for console)
+                ws.send(chunk);
+              }
+            }
+          } catch (err) {
+            console.error(`[Sprite Console] Error reading stderr:`, err);
+          }
+        })();
+
+        // Handle process exit
+        process.exited.then((exitCode) => {
+          console.log(`[Sprite Console] Process exited with code ${exitCode}`);
+          if (ws.readyState === 1) {
+            ws.close(1000, "Console process exited");
+          }
+          spriteConsoleConnections.delete(ws);
+        });
+
+        ws.send(`Connected to ${spriteName} console\r\n`);
+      } catch (err) {
+        console.error(`[Sprite Console] Error spawning console:`, err);
+        ws.send(`Error: Failed to connect to sprite console\r\n`);
+        ws.close(1011, "Failed to spawn console process");
+      }
+      return;
+    }
 
     // Handle keepalive connections
     if (data.type === "keepalive") {
@@ -169,6 +259,22 @@ export const websocketHandlers = {
 
   async message(ws: any, message: any) {
     const wsData = ws.data as { type?: string; sessionId?: string };
+
+    // Handle sprite console messages
+    if (wsData.type === "sprite-console") {
+      const connection = spriteConsoleConnections.get(ws);
+      if (connection && connection.process) {
+        try {
+          // Forward message to sprite console stdin
+          // Message should be raw bytes from the terminal client
+          const data = typeof message === "string" ? Buffer.from(message) : message;
+          connection.process.stdin.write(data);
+        } catch (err) {
+          console.error(`[Sprite Console] Error writing to stdin:`, err);
+        }
+      }
+      return;
+    }
 
     // Ignore messages on keepalive connections
     if (wsData.type === "keepalive") return;
@@ -351,6 +457,21 @@ export const websocketHandlers = {
   close(ws: any) {
     allClients.delete(ws);
     const wsData = ws.data as { type?: string; sessionId?: string };
+
+    // Handle sprite console disconnections
+    if (wsData.type === "sprite-console") {
+      const connection = spriteConsoleConnections.get(ws);
+      if (connection) {
+        console.log(`[Sprite Console] Closing connection to ${connection.spriteName}`);
+        try {
+          connection.process.kill();
+        } catch (err) {
+          console.error(`[Sprite Console] Error killing process:`, err);
+        }
+        spriteConsoleConnections.delete(ws);
+      }
+      return;
+    }
 
     // Handle keepalive disconnections
     if (wsData.type === "keepalive") {
