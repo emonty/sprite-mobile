@@ -29,13 +29,14 @@ SPRITE_NAME="$1"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Retry function for sprite exec commands (new sprites may need time to be ready)
+# Uses -http-post to avoid TTY allocation issues when run from non-interactive contexts
 sprite_exec_retry() {
     local max_attempts=5
     local delay=3
     local attempt=1
 
     while [ $attempt -le $max_attempts ]; do
-        if sprite -s "$SPRITE_NAME" -o "$ORG" exec -- "$@" 2>&1; then
+        if sprite -s "$SPRITE_NAME" -o "$ORG" exec -http-post -- "$@" 2>&1; then
             return 0
         fi
 
