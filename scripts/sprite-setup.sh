@@ -193,6 +193,11 @@ export_config() {
         sprite_network_creds=$(base64 -w0 "$HOME/.sprite-network/credentials.json" 2>/dev/null || base64 "$HOME/.sprite-network/credentials.json" | tr -d '\n')
     fi
 
+    local stripe_creds=""
+    if [ -d "$HOME/.config/stripe" ]; then
+        stripe_creds=$(tar -czf - -C "$HOME/.config" stripe 2>/dev/null | base64 -w0 2>/dev/null || tar -czf - -C "$HOME/.config" stripe 2>/dev/null | base64 | tr -d '\n')
+    fi
+
     # Read saved Tailscale reusable auth key if available
     local tailscale_auth_key=""
     if [ -f "$HOME/.config/sprite/tailscale-auth-key" ]; then
@@ -218,7 +223,8 @@ export_config() {
     "claude_token": "$claude_token",
     "github": "$github_creds",
     "flyctl": "$flyctl_creds",
-    "sprite_network": "$sprite_network_creds"
+    "sprite_network": "$sprite_network_creds",
+    "stripe": "$stripe_creds"
   },
   "tailscale": {
     "auth_key": "$tailscale_auth_key"
@@ -311,6 +317,10 @@ parse_pasted_config() {
                     export SPRITE_API_TOKEN="$value"
                     echo "  SPRITE_API_TOKEN: [set]"
                     ;;
+                STRIPE_API_KEY)
+                    export STRIPE_API_KEY="$value"
+                    echo "  STRIPE_API_KEY: [set]"
+                    ;;
                 *)
                     # Unknown key, export anyway
                     export "$key"="$value"
@@ -346,6 +356,7 @@ EOF
     # TAILSCALE_AUTH_KEY - no longer saved, using password auth
     [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$SPRITE_API_TOKEN" ] && echo "SPRITE_API_TOKEN=$SPRITE_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
+    [ -n "$STRIPE_API_KEY" ] && echo "STRIPE_API_KEY=$STRIPE_API_KEY" >> "$SPRITE_CONFIG_FILE"
 
     # Sprite network credentials
     if [ -n "$SPRITE_NETWORK_S3_BUCKET" ]; then
@@ -490,6 +501,13 @@ load_config() {
         mkdir -p "$HOME/.sprite-network"
         echo "$sprite_network_creds" | base64 -d > "$HOME/.sprite-network/credentials.json"
         chmod 600 "$HOME/.sprite-network/credentials.json"
+    fi
+
+    local stripe_creds=$(json_get_nested "$config" "credentials" "stripe")
+    if [ -n "$stripe_creds" ]; then
+        echo "  Installing Stripe credentials..." >&2
+        mkdir -p "$HOME/.config"
+        echo "$stripe_creds" | base64 -d | tar -xzf - -C "$HOME/.config" 2>/dev/null || true
     fi
 
     echo "Configuration loaded successfully" >&2
@@ -973,9 +991,82 @@ step_4_github() {
     fi
 }
 
-step_5_flyctl() {
+step_5_stripe() {
     echo ""
-    echo "=== Step 5: Fly.io CLI Installation ==="
+    echo "=== Step 5: Stripe CLI Installation ==="
+
+    if command -v stripe &>/dev/null; then
+        echo "Stripe CLI already installed"
+    else
+        echo "Installing Stripe CLI..."
+        # Download and install Stripe CLI
+        curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg > /dev/null
+        echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list > /dev/null
+        sudo apt update && sudo apt install -y stripe
+        echo "Stripe CLI installed"
+    fi
+
+    # Save STRIPE_API_KEY to ~/.sprite-config if provided
+    if [ -n "$STRIPE_API_KEY" ]; then
+        update_sprite_config "STRIPE_API_KEY" "$STRIPE_API_KEY"
+        echo "Saved STRIPE_API_KEY to ~/.sprite-config"
+    fi
+
+    # Check authentication status
+    if stripe config --list 2>/dev/null | grep -q "test_mode_api_key"; then
+        echo "Stripe CLI already authenticated"
+    elif [ -n "$STRIPE_API_KEY" ]; then
+        echo "Stripe API key provided, configuring..."
+        stripe config --set api_key="$STRIPE_API_KEY"
+        echo "Stripe CLI configured with API key"
+    elif [ "$NON_INTERACTIVE" = "true" ]; then
+        if [ -d "$HOME/.config/stripe" ]; then
+            echo "Stripe credentials installed (verifying...)"
+            if stripe config --list 2>/dev/null | grep -q "api_key"; then
+                echo "Stripe CLI authenticated successfully"
+            else
+                echo "Warning: Stripe credentials installed but validation failed"
+            fi
+        else
+            echo "Warning: Stripe CLI not authenticated and no credentials provided"
+            echo "  Run interactively or provide STRIPE_API_KEY in config"
+        fi
+    else
+        echo ""
+        echo "Authentication options:"
+        echo "  1) API key (recommended for automation)"
+        echo "  2) Interactive login (opens browser)"
+        echo ""
+        read -p "Choice [1/2]: " stripe_choice
+
+        case "$stripe_choice" in
+            1)
+                echo ""
+                echo "Get your API key from: https://dashboard.stripe.com/apikeys"
+                echo "Use the Secret key (starts with sk_test_ or sk_live_)"
+                echo ""
+                read -p "Stripe API key: " input_key
+                input_key=$(strip_bracketed_paste "$input_key")
+                if [ -n "$input_key" ]; then
+                    stripe config --set api_key="$input_key"
+                    update_sprite_config "STRIPE_API_KEY" "$input_key"
+                    echo "Stripe CLI configured"
+                else
+                    echo "No key provided, falling back to interactive login..."
+                    stripe login
+                fi
+                ;;
+            *)
+                echo "Starting Stripe CLI authentication..."
+                stripe login
+                ;;
+        esac
+    fi
+}
+
+step_5b_flyctl() {
+    echo ""
+    echo "=== Step 5b: Fly.io CLI Installation ==="
 
     # Set flyctl install location (constant path, handled by shell configs)
     export FLYCTL_INSTALL="/home/sprite/.fly"
@@ -1678,6 +1769,30 @@ sprite-env services logs claude-hub  # View logs
 ## Git Commits
 
 Do NOT add "Co-Authored-By" lines to commit messages. Just write normal commit messages without any co-author attribution.
+
+## Commerce and Payments
+
+When building applications that require payment processing or commerce features, use **Stripe Checkout** as the default payment solution:
+
+- Stripe CLI is pre-installed and authenticated on this sprite
+- Use Stripe Checkout for the simplest integration - it handles the entire payment flow
+- For subscriptions, use Stripe Checkout in subscription mode
+- Use `stripe listen --forward-to localhost:PORT/webhook` to test webhooks locally
+- Stripe test mode keys are configured by default (sk_test_*)
+
+**Quick Start:**
+```bash
+# List products
+stripe products list
+
+# Create a checkout session (in your app)
+stripe checkout sessions create --success-url="http://localhost:3000/success" --cancel-url="http://localhost:3000/cancel" --line-items='[{"price":"price_xxx","quantity":1}]' --mode=payment
+
+# Listen for webhooks during development
+stripe listen --forward-to localhost:3000/webhook
+```
+
+Prefer Stripe Checkout over custom payment forms - it handles PCI compliance, 3D Secure, and provides a polished UX out of the box.
 CLAUDE_EOF
 
     echo "Created $CLAUDE_MD_PATH"
@@ -1771,6 +1886,7 @@ STEP_NAMES=(
     "Configuration"
     "Claude CLI auth"
     "GitHub CLI auth"
+    "Stripe CLI"
     "Fly.io CLI (flyctl)"
     "sprite-mobile"
     "Sprite Network (optional)"
@@ -1786,11 +1902,12 @@ run_step() {
         2) step_2_configuration ;;
         3) step_3_claude ;;
         4) step_4_github ;;
-        5) step_5_flyctl ;;
-        6) step_8_sprite_mobile ;;
-        7) step_6_5_network ;;
-        8) step_11_claude_md ;;
-        9) step_12_claude_hub ;;
+        5) step_5_stripe ;;
+        6) step_5b_flyctl ;;
+        7) step_8_sprite_mobile ;;
+        8) step_6_5_network ;;
+        9) step_11_claude_md ;;
+        10) step_12_claude_hub ;;
         *) echo "Unknown step: $step_num" >&2; return 1 ;;
     esac
 }
@@ -1806,11 +1923,12 @@ show_menu() {
     echo "   2.   Configuration (URLs, repo, git)"
     echo "   3.   Claude CLI authentication"
     echo "   4.   GitHub CLI authentication"
-    echo "   5.   Fly.io CLI (flyctl) installation"
-    echo "   6.   sprite-mobile setup"
-    echo "   7.   Sprite Network (optional)"
-    echo "   8.   CLAUDE.md creation"
-    echo "   9.   claude-hub setup (WebSocket hub)"
+    echo "   5.   Stripe CLI installation"
+    echo "   6.   Fly.io CLI (flyctl) installation"
+    echo "   7.   sprite-mobile setup"
+    echo "   8.   Sprite Network (optional)"
+    echo "   9.   CLAUDE.md creation"
+    echo "  10.   claude-hub setup (WebSocket hub)"
     echo ""
     echo "Note: Password auth is used instead of Tailscale (default: Demopassword)"
     echo ""
@@ -1846,7 +1964,8 @@ run_all_steps() {
     step_2_configuration
     step_3_claude
     step_4_github
-    step_5_flyctl
+    step_5_stripe
+    step_5b_flyctl
     # Note: Tailscale steps removed - using password auth instead
     # step_7_tailscale
     # step_9_tailscale_serve
@@ -1908,6 +2027,7 @@ show_help() {
     echo "  CLAUDE_CODE_OAUTH_TOKEN  OAuth token from 'claude setup-token' (preserves subscription)"
     echo "  ANTHROPIC_API_KEY        Direct API key (uses API billing, not subscription)"
     echo "  GH_TOKEN                 GitHub Personal Access Token"
+    echo "  STRIPE_API_KEY           Stripe API key (from dashboard.stripe.com/apikeys)"
     echo "  FLY_API_TOKEN            Fly.io API token (from 'flyctl auth token')"
     echo "  SPRITE_API_TOKEN         Sprite CLI API token (optional)"
     echo ""

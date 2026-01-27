@@ -115,6 +115,14 @@ rm "$TEMP_CONFIG"
 # Transfer and decode on target
 sprite_exec_retry bash -c "echo '$CONFIG_B64' | base64 -d > ~/.sprite-config && chmod 600 ~/.sprite-config"
 echo "  Transferred ~/.sprite-config (excluded sprite-specific URLs and Tailscale)"
+
+# Transfer Stripe credentials if they exist
+if [ -d "$HOME/.config/stripe" ]; then
+    echo "  Transferring Stripe credentials..."
+    STRIPE_B64=$(tar -czf - -C "$HOME/.config" stripe 2>/dev/null | base64 -w0 2>/dev/null || tar -czf - -C "$HOME/.config" stripe 2>/dev/null | base64 | tr -d '\n')
+    sprite_exec_retry bash -c "mkdir -p ~/.config && echo '$STRIPE_B64' | base64 -d | tar -xzf - -C ~/.config"
+    echo "  Transferred ~/.config/stripe"
+fi
 echo ""
 
 # Step 4: Download setup script
