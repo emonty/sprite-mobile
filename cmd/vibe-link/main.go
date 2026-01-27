@@ -72,7 +72,7 @@ func main() {
 	case "help", "-h", "--help":
 		printUsage()
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
+		fmt.Printf( "Unknown command: %s\n\n", command)
 		printUsage()
 		os.Exit(1)
 	}
@@ -159,7 +159,7 @@ func createCommand() {
 	}
 
 	if err := createSprite(config, spriteName); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Printf( "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -168,6 +168,7 @@ func consoleCommand() {
 	consoleFlags := flag.NewFlagSet("console", flag.ExitOnError)
 	baseURL := consoleFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "ws://localhost:8081"), "Base URL")
 	apiKey := consoleFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+	debug := consoleFlags.Bool("debug", false, "Enable debug output")
 
 	consoleFlags.Parse(os.Args[2:])
 
@@ -192,10 +193,11 @@ func consoleCommand() {
 	config := Config{
 		BaseURL: stripTrailingSlash(*baseURL),
 		APIKey:  *apiKey,
+		Debug:   *debug,
 	}
 
-	if err := connectConsole(config, spriteName); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := connectConsole(config, spriteName); err != nil{
+		fmt.Printf( "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -233,7 +235,7 @@ func urlCommand() {
 	}
 
 	if err := getSpriteURL(config, spriteName); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Printf( "Error: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -253,8 +255,8 @@ func createSprite(config Config, spriteName string) error {
 	apiURL := fmt.Sprintf("%s/api/sprites/create", config.BaseURL)
 
 	if config.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Request URL: %s\n", apiURL)
-		fmt.Fprintf(os.Stderr, "[DEBUG] Request body: %s\n", string(jsonData))
+		fmt.Printf( "[DEBUG] Request URL: %s\n", apiURL)
+		fmt.Printf( "[DEBUG] Request body: %s\n", string(jsonData))
 	}
 
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
@@ -268,8 +270,8 @@ func createSprite(config Config, spriteName string) error {
 	req.Header.Set("Content-Type", "application/json")
 
 	if config.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Authorization: Basic %s...\n", auth[:20])
-		fmt.Fprintf(os.Stderr, "[DEBUG] Content-Type: application/json\n")
+		fmt.Printf( "[DEBUG] Authorization: Basic %s...\n", auth[:20])
+		fmt.Printf( "[DEBUG] Content-Type: application/json\n")
 	}
 
 	client := &http.Client{
@@ -289,9 +291,9 @@ func createSprite(config Config, spriteName string) error {
 	}
 
 	if config.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Response status: %d\n", resp.StatusCode)
-		fmt.Fprintf(os.Stderr, "[DEBUG] Response headers: %v\n", resp.Header)
-		fmt.Fprintf(os.Stderr, "[DEBUG] Response body: %s\n", string(body))
+		fmt.Printf( "[DEBUG] Response status: %d\n", resp.StatusCode)
+		fmt.Printf( "[DEBUG] Response headers: %v\n", resp.Header)
+		fmt.Printf( "[DEBUG] Response body: %s\n", string(body))
 	}
 
 	if resp.StatusCode == 302 || resp.StatusCode == 301 {
@@ -329,15 +331,19 @@ func createSprite(config Config, spriteName string) error {
 		return fmt.Errorf("sprite creation failed")
 	}
 
-	fmt.Printf("✓ Sprite created successfully: %s\n", result.Name)
+	// Success - show clean message
+	fmt.Printf("✓ %s created\n", result.Name)
 	if result.PublicURL != "" {
-		fmt.Println("---")
-		fmt.Printf("Public URL: %s\n", result.PublicURL)
-		fmt.Println("---")
+		fmt.Printf("\nYou can access it via:\n")
+		fmt.Printf("  • vibe-link console %s\n", result.Name)
+		fmt.Printf("  • %s\n", result.PublicURL)
+	} else {
+		fmt.Printf("\nYou can access it via: vibe-link console %s\n", result.Name)
 	}
 
-	if result.Output != "" {
-		fmt.Printf("\nCreation output:\n%s\n", result.Output)
+	// Only show full output in debug mode
+	if config.Debug && result.Output != "" {
+		fmt.Printf("\n[DEBUG] Creation output:\n%s\n", result.Output)
 	}
 
 	return nil
@@ -349,7 +355,7 @@ func getSpriteURL(config Config, spriteName string) error {
 	apiURL := fmt.Sprintf("%s/api/sprites/%s/url", config.BaseURL, url.PathEscape(spriteName))
 
 	if config.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Request URL: %s\n", apiURL)
+		fmt.Printf( "[DEBUG] Request URL: %s\n", apiURL)
 	}
 
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -362,7 +368,7 @@ func getSpriteURL(config Config, spriteName string) error {
 	req.Header.Set("Authorization", "Basic "+auth)
 
 	if config.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Authorization: Basic %s...\n", auth[:20])
+		fmt.Printf( "[DEBUG] Authorization: Basic %s...\n", auth[:20])
 	}
 
 	client := &http.Client{
@@ -382,8 +388,8 @@ func getSpriteURL(config Config, spriteName string) error {
 	}
 
 	if config.Debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Response status: %d\n", resp.StatusCode)
-		fmt.Fprintf(os.Stderr, "[DEBUG] Response body: %s\n", string(body))
+		fmt.Printf( "[DEBUG] Response status: %d\n", resp.StatusCode)
+		fmt.Printf( "[DEBUG] Response body: %s\n", string(body))
 	}
 
 	if resp.StatusCode == 401 {
@@ -426,6 +432,10 @@ func getSpriteURL(config Config, spriteName string) error {
 }
 
 func connectConsole(config Config, spriteName string) error {
+	if config.Debug {
+		fmt.Printf( "[DEBUG] config.BaseURL: %s\n", config.BaseURL)
+	}
+
 	// Convert HTTP(S) URL to WS(S)
 	wsURL := config.BaseURL
 	if len(wsURL) > 4 && wsURL[:4] == "http" {
@@ -436,10 +446,19 @@ func connectConsole(config Config, spriteName string) error {
 		}
 	}
 
+	if config.Debug {
+		fmt.Printf( "[DEBUG] wsURL after conversion: %s\n", wsURL)
+	}
+
 	// Build WebSocket URL
-	u, err := url.Parse(fmt.Sprintf("%s/api/sprites/%s/console", wsURL, url.PathEscape(spriteName)))
+	fullURL := fmt.Sprintf("%s/api/sprites/%s/console", wsURL, url.PathEscape(spriteName))
+	u, err := url.Parse(fullURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if config.Debug {
+		fmt.Printf( "[DEBUG] Connecting to URL: %s\n", fullURL)
 	}
 
 	fmt.Printf("Connecting to %s console...\n", spriteName)

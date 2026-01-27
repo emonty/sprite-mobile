@@ -125,19 +125,47 @@ if [ -d "$HOME/.config/stripe" ]; then
 fi
 echo ""
 
-# Step 4: Download setup script
-echo "Step 4: Downloading setup script..."
+# Step 4: Create CLAUDE.md with sprite information
+echo "Step 4: Creating CLAUDE.md with sprite information..."
+if [ -n "$PUBLIC_URL" ]; then
+    CLAUDE_MD_CONTENT="# Sprite Information
+
+## Public URL
+Your sprite's public URL is: $PUBLIC_URL
+
+## Important Notes for Development
+
+When running development servers (e.g., \`npm run dev\`, \`python -m http.server\`, etc.), **DO NOT** communicate localhost URLs to users.
+
+Instead:
+- Always use your public URL: $PUBLIC_URL
+- Replace \`localhost\` or \`127.0.0.1\` with your sprite domain
+- Example: If a dev server runs on port 3000, tell users to visit \`$PUBLIC_URL:3000\` (not \`localhost:3000\`)
+
+This ensures users can actually access services you run on this sprite.
+"
+    sprite_exec_retry bash -c "cat > ~/CLAUDE.md << 'EOF'
+$CLAUDE_MD_CONTENT
+EOF"
+    echo "  Created ~/CLAUDE.md"
+else
+    echo "  Skipped (no public URL available)"
+fi
+echo ""
+
+# Step 5: Download setup script
+echo "Step 5: Downloading setup script..."
 sprite_exec_retry bash -c "curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/main/scripts/sprite-setup.sh -o ~/sprite-setup.sh && chmod +x ~/sprite-setup.sh"
 echo "  Downloaded sprite-setup.sh"
 echo ""
 
-# Step 5: Run setup script
-echo "Step 5: Running setup script (this may take 3-5 minutes)..."
+# Step 6: Run setup script
+echo "Step 6: Running setup script (this may take 3-5 minutes)..."
 echo ""
 sprite_exec_retry bash -c "set -a && source ~/.sprite-config && set +a && export NON_INTERACTIVE=true && cd ~ && ./sprite-setup.sh --name '$SPRITE_NAME' --url '$PUBLIC_URL' all"
 echo ""
 
-# Step 6: Verify services
+# Step 7: Verify services
 echo "============================================"
 echo "Setup Complete!"
 echo "============================================"
