@@ -128,7 +128,7 @@ export const websocketHandlers = {
 
         console.log(`[Sprite Console] Spawning: sprite ${args.join(" ")}`);
 
-        const process = spawn({
+        const proc = spawn({
           cmd: ["sprite", ...args],
           stdin: "pipe",
           stdout: "pipe",
@@ -136,12 +136,12 @@ export const websocketHandlers = {
           env: process.env,
         });
 
-        spriteConsoleConnections.set(ws, { process, ws, spriteName });
+        spriteConsoleConnections.set(ws, { process: proc, ws, spriteName });
 
         // Forward stdout to WebSocket
         (async () => {
           try {
-            for await (const chunk of process.stdout) {
+            for await (const chunk of proc.stdout) {
               if (ws.readyState === 1) {
                 // Send raw bytes to client
                 ws.send(chunk);
@@ -155,7 +155,7 @@ export const websocketHandlers = {
         // Forward stderr to WebSocket
         (async () => {
           try {
-            for await (const chunk of process.stderr) {
+            for await (const chunk of proc.stderr) {
               if (ws.readyState === 1) {
                 // Send raw bytes to client (stderr is also important for console)
                 ws.send(chunk);
@@ -167,7 +167,7 @@ export const websocketHandlers = {
         })();
 
         // Handle process exit
-        process.exited.then((exitCode) => {
+        proc.exited.then((exitCode) => {
           console.log(`[Sprite Console] Process exited with code ${exitCode}`);
           if (ws.readyState === 1) {
             ws.close(1000, "Console process exited");
