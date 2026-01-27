@@ -178,7 +178,10 @@ export const websocketHandlers = {
         ws.send(`Connected to ${spriteName} console\r\n`);
       } catch (err) {
         console.error(`[Sprite Console] Error spawning console:`, err);
-        ws.send(`Error: Failed to connect to sprite console\r\n`);
+        console.error(`[Sprite Console] Error stack:`, err instanceof Error ? err.stack : 'No stack');
+        console.error(`[Sprite Console] Error details:`, JSON.stringify(err, null, 2));
+        const errMsg = err instanceof Error ? err.message : String(err);
+        ws.send(`Error: Failed to connect to sprite console: ${errMsg}\r\n`);
         ws.close(1011, "Failed to spawn console process");
       }
       return;
@@ -238,9 +241,9 @@ export const websocketHandlers = {
     }
 
     // Spawn new Claude process
-    const process = spawnClaude(cwd, claudeSessionId);
+    const claudeProc = spawnClaude(cwd, claudeSessionId);
     const bg: BackgroundProcess = {
-      process,
+      process: claudeProc,
       buffer: "",
       assistantBuffer: "",
       sessionId,
@@ -313,9 +316,9 @@ export const websocketHandlers = {
           const cwd = session?.cwd || process.env.HOME || "/home/sprite";
           const claudeSessionId = session?.claudeSessionId;
 
-          const process = spawnClaude(cwd, claudeSessionId);
+          const claudeProc = spawnClaude(cwd, claudeSessionId);
           bg = {
-            process,
+            process: claudeProc,
             buffer: "",
             assistantBuffer: "",
             sessionId,
