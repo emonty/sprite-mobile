@@ -1021,6 +1021,89 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
     })();
   }
 
+  // GET /api/sprites/:name/url - Get sprite public URL (API key auth)
+  if (req.method === "GET" && path.match(/^\/api\/sprites\/[^/]+\/url$/)) {
+    return (async () => {
+      // Validate API key auth
+      const authHeader = req.headers.get("Authorization");
+      if (!validateApiKey(authHeader)) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: { "WWW-Authenticate": 'Basic realm="API Key Required"' }
+        });
+      }
+
+      const spriteName = path.split("/")[3];
+      if (!spriteName) {
+        return Response.json({ error: "Missing sprite name" }, { status: 400 });
+      }
+
+      console.log(`[API] Getting URL for sprite: ${spriteName}`);
+
+      // Determine the organization
+      const spriteConfigPath = join(process.env.HOME || "/home/sprite", ".sprite-config");
+      let org = "";
+      if (existsSync(spriteConfigPath)) {
+        const config = readFileSync(spriteConfigPath, "utf-8");
+        const orgMatch = config.match(/^SPRITE_ORG=(.+)$/m);
+        if (orgMatch) org = orgMatch[1].trim();
+      }
+
+      if (!org) {
+        return Response.json({ error: "Could not determine sprite organization" }, { status: 500 });
+      }
+
+      try {
+        // Use sprite API to get the sprite's URL
+        const proc = spawn({
+          cmd: ["sprite", "api", "/v1/sprites/" + spriteName, "-o", org],
+          stdout: "pipe",
+          stderr: "pipe",
+        });
+
+        const [stdout, stderr] = await Promise.all([
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+        ]);
+
+        await proc.exited;
+
+        if (proc.exitCode === 0) {
+          // Parse JSON response
+          try {
+            const data = JSON.parse(stdout);
+            const publicUrl = data.url || null;
+
+            return Response.json({
+              success: true,
+              name: spriteName,
+              publicUrl,
+            });
+          } catch (err) {
+            console.error(`[API] Failed to parse sprite API response:`, err);
+            return Response.json({
+              success: false,
+              error: "Failed to parse sprite information"
+            }, { status: 500 });
+          }
+        } else {
+          console.error(`[API] Failed to get sprite URL:`, stderr || stdout);
+          return Response.json({
+            success: false,
+            error: "Sprite not found or inaccessible",
+            details: stderr || stdout
+          }, { status: 404 });
+        }
+      } catch (err) {
+        console.error("[API] Error getting sprite URL:", err);
+        return Response.json({
+          success: false,
+          error: String(err)
+        }, { status: 500 });
+      }
+    })();
+  }
+
   // POST /api/sprites/create - Create a new sprite (API key auth)
   // Uses Basic Auth with API key as username (must start with "sk_" or "rk_"), password ignored
   if (req.method === "POST" && path === "/api/sprites/create") {

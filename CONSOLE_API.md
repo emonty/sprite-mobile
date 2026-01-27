@@ -1,12 +1,41 @@
-# Sprite Console WebSocket API
+# Sprite Console API
 
-Connect to a sprite's console shell via WebSocket for bidirectional terminal access.
+Access sprite consoles and retrieve sprite information via HTTP and WebSocket.
 
-## Endpoint
+## Endpoints
+
+### Get Sprite URL
+
+```
+GET /api/sprites/{sprite-name}/url
+```
+
+Retrieve the public URL for a sprite.
+
+**Authentication:** HTTP Basic Auth with API key
+
+**Response:**
+```json
+{
+  "success": true,
+  "name": "my-sprite",
+  "publicUrl": "https://my-sprite.fly.dev"
+}
+```
+
+**Example:**
+```bash
+curl -u "sk_your_api_key:x" \
+  https://your-domain.com/api/sprites/my-sprite/url
+```
+
+### Console WebSocket
 
 ```
 WebSocket: /api/sprites/{sprite-name}/console
 ```
+
+Connect to a sprite's console shell via WebSocket for bidirectional terminal access.
 
 ## Authentication
 

@@ -64,6 +64,9 @@ vibe-link create <sprite-name> -key <api-key>
 
 # Connect to sprite console
 vibe-link console <sprite-name> -key <api-key>
+
+# Get sprite URL
+vibe-link url <sprite-name> -key <api-key>
 ```
 
 ### Create a Sprite
@@ -104,6 +107,27 @@ vibe-link console my-sprite \
 
 The console provides a full interactive terminal session. Press `Ctrl+D` or type `exit` to disconnect.
 
+### Get Sprite URL
+
+Get the public URL for an existing sprite:
+
+```bash
+vibe-link url my-sprite -key sk_test_12345
+
+# With custom URL
+vibe-link url my-sprite \
+  -url https://my-sprite.fly.dev \
+  -key sk_test_12345
+```
+
+Output:
+```
+Getting URL for sprite: my-sprite
+https://my-sprite.fly.dev
+```
+
+This is useful for scripting and automation where you need to get the URL programmatically.
+
 ### Environment Variables
 
 Configure default settings via environment variables:
@@ -118,6 +142,7 @@ export SPRITE_API_URL=https://my-sprite.fly.dev
 # Now you can omit the flags
 vibe-link create my-new-sprite
 vibe-link console my-sprite
+vibe-link url my-sprite
 ```
 
 Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make them permanent.

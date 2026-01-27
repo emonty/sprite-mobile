@@ -36,6 +36,13 @@ type CreateSpriteResponse struct {
 	Error     string `json:"error,omitempty"`
 }
 
+type GetSpriteURLResponse struct {
+	Success   bool   `json:"success"`
+	Name      string `json:"name"`
+	PublicURL string `json:"publicUrl,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -49,6 +56,8 @@ func main() {
 		createCommand()
 	case "console":
 		consoleCommand()
+	case "url":
+		urlCommand()
 	case "version":
 		fmt.Printf("vibe-link version %s\n", version)
 	case "help", "-h", "--help":
@@ -69,6 +78,7 @@ Usage:
 Commands:
   create <name>              Create a new sprite
   console <name>             Connect to a sprite's console
+  url <name>                 Get a sprite's public URL
   version                    Show version information
   help                       Show this help message
 
@@ -78,6 +88,10 @@ Create Options:
 
 Console Options:
   -url <base-url>            Base URL (default: ws://localhost:8081)
+  -key <api-key>             API key (or set SPRITE_API_KEY env var)
+
+URL Options:
+  -url <base-url>            Base URL (default: http://localhost:8081)
   -key <api-key>             API key (or set SPRITE_API_KEY env var)
 
 Environment Variables:
@@ -91,11 +105,15 @@ Examples:
   # Connect to sprite console
   vibe-link console my-sprite -key sk_test_12345
 
+  # Get sprite URL
+  vibe-link url my-sprite -key sk_test_12345
+
   # Using environment variables
   export SPRITE_API_KEY=sk_test_12345
   export SPRITE_API_URL=https://my-sprite.fly.dev
   vibe-link create my-new-sprite
   vibe-link console my-sprite
+  vibe-link url my-sprite
 `)
 }
 
@@ -171,6 +189,42 @@ func consoleCommand() {
 	}
 }
 
+func urlCommand() {
+	urlFlags := flag.NewFlagSet("url", flag.ExitOnError)
+	baseURL := urlFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "http://localhost:8081"), "Base URL")
+	apiKey := urlFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+
+	urlFlags.Parse(os.Args[2:])
+
+	if urlFlags.NArg() < 1 {
+		fmt.Fprintln(os.Stderr, "Error: sprite name required")
+		fmt.Fprintln(os.Stderr, "Usage: vibe-link url <name> [-url <base-url>] [-key <api-key>]")
+		os.Exit(1)
+	}
+
+	spriteName := urlFlags.Arg(0)
+
+	if *apiKey == "" {
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or SPRITE_API_KEY env var)")
+		os.Exit(1)
+	}
+
+	if !isValidAPIKey(*apiKey) {
+		fmt.Fprintln(os.Stderr, "Error: API key must start with 'sk_' or 'rk_'")
+		os.Exit(1)
+	}
+
+	config := Config{
+		BaseURL: *baseURL,
+		APIKey:  *apiKey,
+	}
+
+	if err := getSpriteURL(config, spriteName); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func createSprite(config Config, spriteName string) error {
 	fmt.Printf("Creating sprite: %s\n", spriteName)
 
@@ -232,11 +286,71 @@ func createSprite(config Config, spriteName string) error {
 
 	fmt.Printf("✓ Sprite created successfully: %s\n", result.Name)
 	if result.PublicURL != "" {
+		fmt.Println("---")
 		fmt.Printf("Public URL: %s\n", result.PublicURL)
+		fmt.Println("---")
 	}
 
 	if result.Output != "" {
-		fmt.Printf("\nOutput:\n%s\n", result.Output)
+		fmt.Printf("\nCreation output:\n%s\n", result.Output)
+	}
+
+	return nil
+}
+
+func getSpriteURL(config Config, spriteName string) error {
+	fmt.Printf("Getting URL for sprite: %s\n", spriteName)
+
+	apiURL := fmt.Sprintf("%s/api/sprites/%s/url", config.BaseURL, url.PathEscape(spriteName))
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add Basic Auth header
+	auth := base64.StdEncoding.EncodeToString([]byte(config.APIKey + ":x"))
+	req.Header.Set("Authorization", "Basic "+auth)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode == 401 {
+		return fmt.Errorf("unauthorized: invalid API key")
+	}
+
+	if resp.StatusCode == 404 {
+		return fmt.Errorf("sprite not found")
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result GetSpriteURLResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if !result.Success {
+		if result.Error != "" {
+			return fmt.Errorf("%s", result.Error)
+		}
+		return fmt.Errorf("failed to get sprite URL")
+	}
+
+	if result.PublicURL != "" {
+		fmt.Printf("%s\n", result.PublicURL)
+	} else {
+		fmt.Println("No public URL available for this sprite")
 	}
 
 	return nil

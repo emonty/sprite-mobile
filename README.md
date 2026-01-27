@@ -685,6 +685,7 @@ Claude's `.jsonl` files are the source of truth. Sprite-mobile only maintains li
 | PATCH | `/api/sprites/:id` | Update a Sprite profile |
 | DELETE | `/api/sprites/:id` | Remove a Sprite profile |
 | POST | `/api/sprites/create` | Create a new sprite (API key auth) |
+| GET | `/api/sprites/:name/url` | Get sprite's public URL (API key auth) |
 | WebSocket | `/api/sprites/:name/console` | Connect to a sprite's console shell (API key auth) |
 | GET | `/api/network/status` | Check if sprite network is configured |
 | GET | `/api/network/sprites` | Discover sprites in the network |
