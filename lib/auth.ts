@@ -78,11 +78,32 @@ const PUBLIC_PATHS = [
   "/login.html",
   "/api/login",
   "/api/auth/status",
+  "/api/sprites/create",  // Uses API key auth instead
   "/styles.css",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
 ];
+
+// Validate API key from Basic Auth header
+// Accepts any key starting with "sk_" as username, password ignored
+export function validateApiKey(authHeader: string | null): boolean {
+  if (!authHeader) return false;
+
+  // Basic Auth format: "Basic base64(username:password)"
+  if (!authHeader.startsWith("Basic ")) return false;
+
+  try {
+    const base64Credentials = authHeader.slice(6);
+    const credentials = Buffer.from(base64Credentials, "base64").toString("utf-8");
+    const [username] = credentials.split(":");
+
+    // API key must start with "sk_"
+    return username.startsWith("sk_");
+  } catch {
+    return false;
+  }
+}
 
 // Check if a path requires authentication
 export function requiresAuth(pathname: string): boolean {

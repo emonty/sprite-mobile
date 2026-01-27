@@ -19,7 +19,8 @@ import {
   getSessionFromCookie,
   createSessionCookie,
   createLogoutCookie,
-  validateSession
+  validateSession,
+  validateApiKey
 } from "../lib/auth";
 
 // Claude projects directory
@@ -1015,6 +1016,92 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
       } catch (err) {
         console.error("[Keepalive] Error stopping:", err);
         return Response.json({ success: false, error: String(err) }, { status: 500 });
+      }
+    })();
+  }
+
+  // POST /api/sprites/create - Create a new sprite (API key auth)
+  // Uses Basic Auth with API key as username (must start with "sk_"), password ignored
+  if (req.method === "POST" && path === "/api/sprites/create") {
+    return (async () => {
+      // Validate API key auth
+      const authHeader = req.headers.get("Authorization");
+      if (!validateApiKey(authHeader)) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: { "WWW-Authenticate": 'Basic realm="API Key Required"' }
+        });
+      }
+
+      // Parse request body
+      let body: { name?: string };
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+      }
+
+      const spriteName = body.name;
+      if (!spriteName) {
+        return Response.json({ error: "Missing required field: name" }, { status: 400 });
+      }
+
+      // Validate sprite name (alphanumeric, hyphens, underscores only)
+      if (!/^[a-zA-Z0-9_-]+$/.test(spriteName)) {
+        return Response.json({
+          error: "Invalid sprite name. Use only alphanumeric characters, hyphens, and underscores."
+        }, { status: 400 });
+      }
+
+      console.log(`[API] Creating sprite: ${spriteName}`);
+
+      // Run create-sprite.sh script
+      const scriptPath = join(process.env.HOME || "/home/sprite", ".sprite-mobile/scripts/create-sprite.sh");
+
+      try {
+        const proc = spawn({
+          cmd: ["bash", scriptPath, spriteName],
+          stdout: "pipe",
+          stderr: "pipe",
+          env: process.env,
+        });
+
+        const [stdout, stderr] = await Promise.all([
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+        ]);
+
+        await proc.exited;
+        const exitCode = proc.exitCode;
+
+        if (exitCode === 0) {
+          // Extract public URL from output if available
+          const urlMatch = stdout.match(/Public URL: (https?:\/\/[^\s]+)/);
+          const publicUrl = urlMatch ? urlMatch[1] : null;
+
+          console.log(`[API] Sprite created successfully: ${spriteName}`);
+          return Response.json({
+            success: true,
+            name: spriteName,
+            publicUrl,
+            output: stdout,
+          });
+        } else {
+          console.error(`[API] Sprite creation failed (exit ${exitCode}):`, stderr || stdout);
+          return Response.json({
+            success: false,
+            error: "Sprite creation failed",
+            exitCode,
+            output: stdout,
+            stderr,
+          }, { status: 500 });
+        }
+      } catch (err) {
+        console.error("[API] Error running create-sprite.sh:", err);
+        return Response.json({
+          success: false,
+          error: String(err)
+        }, { status: 500 });
       }
     })();
   }
