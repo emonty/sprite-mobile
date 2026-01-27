@@ -22,6 +22,7 @@ const version = "1.0.0"
 type Config struct {
 	BaseURL string
 	APIKey  string
+	Debug   bool
 }
 
 type CreateSpriteRequest struct {
@@ -121,6 +122,7 @@ func createCommand() {
 	createFlags := flag.NewFlagSet("create", flag.ExitOnError)
 	baseURL := createFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "http://localhost:8081"), "Base URL")
 	apiKey := createFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+	debug := createFlags.Bool("debug", false, "Enable debug output")
 
 	createFlags.Parse(os.Args[2:])
 
@@ -145,6 +147,7 @@ func createCommand() {
 	config := Config{
 		BaseURL: *baseURL,
 		APIKey:  *apiKey,
+		Debug:   *debug,
 	}
 
 	if err := createSprite(config, spriteName); err != nil {
@@ -193,6 +196,7 @@ func urlCommand() {
 	urlFlags := flag.NewFlagSet("url", flag.ExitOnError)
 	baseURL := urlFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "http://localhost:8081"), "Base URL")
 	apiKey := urlFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+	debug := urlFlags.Bool("debug", false, "Enable debug output")
 
 	urlFlags.Parse(os.Args[2:])
 
@@ -217,6 +221,7 @@ func urlCommand() {
 	config := Config{
 		BaseURL: *baseURL,
 		APIKey:  *apiKey,
+		Debug:   *debug,
 	}
 
 	if err := getSpriteURL(config, spriteName); err != nil {
@@ -238,6 +243,12 @@ func createSprite(config Config, spriteName string) error {
 	}
 
 	apiURL := fmt.Sprintf("%s/api/sprites/create", config.BaseURL)
+
+	if config.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Request URL: %s\n", apiURL)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Request body: %s\n", string(jsonData))
+	}
+
 	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -247,6 +258,11 @@ func createSprite(config Config, spriteName string) error {
 	auth := base64.StdEncoding.EncodeToString([]byte(config.APIKey + ":x"))
 	req.Header.Set("Authorization", "Basic "+auth)
 	req.Header.Set("Content-Type", "application/json")
+
+	if config.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Authorization: Basic %s...\n", auth[:20])
+		fmt.Fprintf(os.Stderr, "[DEBUG] Content-Type: application/json\n")
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -260,16 +276,28 @@ func createSprite(config Config, spriteName string) error {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if config.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response status: %d\n", resp.StatusCode)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response headers: %v\n", resp.Header)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response body: %s\n", string(body))
+	}
+
 	if resp.StatusCode == 401 {
 		return fmt.Errorf("unauthorized: invalid API key")
 	}
 
 	if resp.StatusCode != 200 {
+		if config.Debug {
+			return fmt.Errorf("request failed with status %d (see debug output above)", resp.StatusCode)
+		}
 		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result CreateSpriteResponse
 	if err := json.Unmarshal(body, &result); err != nil {
+		if config.Debug {
+			return fmt.Errorf("failed to parse response: %w (see response body in debug output above)", err)
+		}
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
@@ -302,6 +330,11 @@ func getSpriteURL(config Config, spriteName string) error {
 	fmt.Printf("Getting URL for sprite: %s\n", spriteName)
 
 	apiURL := fmt.Sprintf("%s/api/sprites/%s/url", config.BaseURL, url.PathEscape(spriteName))
+
+	if config.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Request URL: %s\n", apiURL)
+	}
+
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -310,6 +343,10 @@ func getSpriteURL(config Config, spriteName string) error {
 	// Add Basic Auth header
 	auth := base64.StdEncoding.EncodeToString([]byte(config.APIKey + ":x"))
 	req.Header.Set("Authorization", "Basic "+auth)
+
+	if config.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Authorization: Basic %s...\n", auth[:20])
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -323,6 +360,11 @@ func getSpriteURL(config Config, spriteName string) error {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
+	if config.Debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response status: %d\n", resp.StatusCode)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Response body: %s\n", string(body))
+	}
+
 	if resp.StatusCode == 401 {
 		return fmt.Errorf("unauthorized: invalid API key")
 	}
@@ -332,11 +374,17 @@ func getSpriteURL(config Config, spriteName string) error {
 	}
 
 	if resp.StatusCode != 200 {
+		if config.Debug {
+			return fmt.Errorf("request failed with status %d (see debug output above)", resp.StatusCode)
+		}
 		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result GetSpriteURLResponse
 	if err := json.Unmarshal(body, &result); err != nil {
+		if config.Debug {
+			return fmt.Errorf("failed to parse response: %w (see response body in debug output above)", err)
+		}
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
