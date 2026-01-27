@@ -86,7 +86,7 @@ const PUBLIC_PATHS = [
 ];
 
 // Validate API key from Basic Auth header
-// Accepts any key starting with "sk_" as username, password ignored
+// Accepts any key starting with "sk_" or "rk_" as username, password ignored
 export function validateApiKey(authHeader: string | null): boolean {
   if (!authHeader) return false;
 
@@ -98,10 +98,25 @@ export function validateApiKey(authHeader: string | null): boolean {
     const credentials = Buffer.from(base64Credentials, "base64").toString("utf-8");
     const [username] = credentials.split(":");
 
-    // API key must start with "sk_"
-    return username.startsWith("sk_");
+    // API key must start with "sk_" or "rk_"
+    return username.startsWith("sk_") || username.startsWith("rk_");
   } catch {
     return false;
+  }
+}
+
+// Extract API key from Basic Auth header
+export function extractApiKey(authHeader: string | null): string | null {
+  if (!authHeader) return null;
+  if (!authHeader.startsWith("Basic ")) return null;
+
+  try {
+    const base64Credentials = authHeader.slice(6);
+    const credentials = Buffer.from(base64Credentials, "base64").toString("utf-8");
+    const [username] = credentials.split(":");
+    return username;
+  } catch {
+    return null;
   }
 }
 

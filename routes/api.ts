@@ -20,7 +20,8 @@ import {
   createSessionCookie,
   createLogoutCookie,
   validateSession,
-  validateApiKey
+  validateApiKey,
+  extractApiKey
 } from "../lib/auth";
 
 // Claude projects directory
@@ -1021,7 +1022,7 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
   }
 
   // POST /api/sprites/create - Create a new sprite (API key auth)
-  // Uses Basic Auth with API key as username (must start with "sk_"), password ignored
+  // Uses Basic Auth with API key as username (must start with "sk_" or "rk_"), password ignored
   if (req.method === "POST" && path === "/api/sprites/create") {
     return (async () => {
       // Validate API key auth
@@ -1032,6 +1033,9 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
           headers: { "WWW-Authenticate": 'Basic realm="API Key Required"' }
         });
       }
+
+      // Extract the API key to pass as STRIPE_API_KEY
+      const apiKey = extractApiKey(authHeader);
 
       // Parse request body
       let body: { name?: string };
@@ -1058,12 +1062,18 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
       // Run create-sprite.sh script
       const scriptPath = join(process.env.HOME || "/home/sprite", ".sprite-mobile/scripts/create-sprite.sh");
 
+      // Build environment with STRIPE_API_KEY override if API key provided
+      const scriptEnv = { ...process.env };
+      if (apiKey) {
+        scriptEnv.STRIPE_API_KEY = apiKey;
+      }
+
       try {
         const proc = spawn({
           cmd: ["bash", scriptPath, spriteName],
           stdout: "pipe",
           stderr: "pipe",
-          env: process.env,
+          env: scriptEnv,
         });
 
         const [stdout, stderr] = await Promise.all([
