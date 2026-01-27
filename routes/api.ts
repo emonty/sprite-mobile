@@ -1040,23 +1040,10 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
 
       console.log(`[API] Getting URL for sprite: ${spriteName}`);
 
-      // Determine the organization
-      const spriteConfigPath = join(process.env.HOME || "/home/sprite", ".sprite-config");
-      let org = "";
-      if (existsSync(spriteConfigPath)) {
-        const config = readFileSync(spriteConfigPath, "utf-8");
-        const orgMatch = config.match(/^SPRITE_ORG=(.+)$/m);
-        if (orgMatch) org = orgMatch[1].trim();
-      }
-
-      if (!org) {
-        return Response.json({ error: "Could not determine sprite organization" }, { status: 500 });
-      }
-
       try {
-        // Use sprite API to get the sprite's URL
+        // Use sprite CLI to get the sprite's URL
         const proc = spawn({
-          cmd: ["sprite", "api", "/v1/sprites/" + spriteName, "-o", org],
+          cmd: ["sprite", "-s", spriteName, "url"],
           stdout: "pipe",
           stderr: "pipe",
         });
@@ -1069,21 +1056,21 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         await proc.exited;
 
         if (proc.exitCode === 0) {
-          // Parse JSON response
-          try {
-            const data = JSON.parse(stdout);
-            const publicUrl = data.url || null;
+          // Parse output (format: "URL: https://...\nAuth: ...")
+          const urlMatch = stdout.match(/URL:\s*(.+)/);
+          const publicUrl = urlMatch ? urlMatch[1].trim() : null;
 
+          if (publicUrl) {
             return Response.json({
               success: true,
               name: spriteName,
               publicUrl,
             });
-          } catch (err) {
-            console.error(`[API] Failed to parse sprite API response:`, err);
+          } else {
+            console.error(`[API] Could not parse URL from output:`, stdout);
             return Response.json({
               success: false,
-              error: "Failed to parse sprite information"
+              error: "Failed to parse sprite URL"
             }, { status: 500 });
           }
         } else {
