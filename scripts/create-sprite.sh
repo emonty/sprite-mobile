@@ -28,6 +28,29 @@ fi
 SPRITE_NAME="$1"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Retry function for sprite exec commands (new sprites may need time to be ready)
+sprite_exec_retry() {
+    local max_attempts=5
+    local delay=3
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        if sprite -s "$SPRITE_NAME" -o "$ORG" exec -- "$@" 2>&1; then
+            return 0
+        fi
+
+        if [ $attempt -lt $max_attempts ]; then
+            echo "  Attempt $attempt failed, retrying in ${delay}s..."
+            sleep $delay
+            delay=$((delay * 2))  # Exponential backoff
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    echo "  Failed after $max_attempts attempts"
+    return 1
+}
+
 echo "============================================"
 echo "Creating and Configuring Sprite"
 echo "============================================"
@@ -62,6 +85,8 @@ else
         echo "  Warning: Sprite creation failed, but it may already exist"
     else
         echo "  Created sprite: $SPRITE_NAME"
+        echo "  Waiting for sprite to be ready..."
+        sleep 5
     fi
 fi
 echo ""
@@ -87,20 +112,20 @@ grep -v '^SPRITE_PUBLIC_URL=' "$HOME/.sprite-config" 2>/dev/null | \
 CONFIG_B64=$(base64 -w0 "$TEMP_CONFIG" 2>/dev/null || base64 "$TEMP_CONFIG" | tr -d '\n')
 rm "$TEMP_CONFIG"
 # Transfer and decode on target
-sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "echo '$CONFIG_B64' | base64 -d > ~/.sprite-config && chmod 600 ~/.sprite-config"
+sprite_exec_retry bash -c "echo '$CONFIG_B64' | base64 -d > ~/.sprite-config && chmod 600 ~/.sprite-config"
 echo "  Transferred ~/.sprite-config (excluded sprite-specific URLs and Tailscale)"
 echo ""
 
 # Step 4: Download setup script
 echo "Step 4: Downloading setup script..."
-sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/main/scripts/sprite-setup.sh -o ~/sprite-setup.sh && chmod +x ~/sprite-setup.sh"
+sprite_exec_retry bash -c "curl -fsSL https://raw.githubusercontent.com/emonty/sprite-mobile/main/scripts/sprite-setup.sh -o ~/sprite-setup.sh && chmod +x ~/sprite-setup.sh"
 echo "  Downloaded sprite-setup.sh"
 echo ""
 
 # Step 5: Run setup script
 echo "Step 5: Running setup script (this may take 3-5 minutes)..."
 echo ""
-sprite -s "$SPRITE_NAME" -o "$ORG" exec -- bash -c "set -a && source ~/.sprite-config && set +a && export NON_INTERACTIVE=true && cd ~ && ./sprite-setup.sh --name '$SPRITE_NAME' --url '$PUBLIC_URL' all"
+sprite_exec_retry bash -c "set -a && source ~/.sprite-config && set +a && export NON_INTERACTIVE=true && cd ~ && ./sprite-setup.sh --name '$SPRITE_NAME' --url '$PUBLIC_URL' all"
 echo ""
 
 # Step 6: Verify services
@@ -114,7 +139,7 @@ if [ -n "$PUBLIC_URL" ]; then
 fi
 echo ""
 echo "Verifying services..."
-sprite -s "$SPRITE_NAME" -o "$ORG" exec -- sprite-env services list | grep -o '"name":"[^"]*"' | sed 's/"name":"/  - /' | sed 's/"$//'
+sprite_exec_retry sprite-env services list | grep -o '"name":"[^"]*"' | sed 's/"name":"/  - /' | sed 's/"$//'
 echo ""
 echo "To access the sprite:"
 if [ -n "$PUBLIC_URL" ]; then
