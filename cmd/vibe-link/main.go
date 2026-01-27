@@ -264,7 +264,11 @@ func createSprite(config Config, spriteName string) error {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Content-Type: application/json\n")
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // Don't follow redirects
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -280,6 +284,11 @@ func createSprite(config Config, spriteName string) error {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Response status: %d\n", resp.StatusCode)
 		fmt.Fprintf(os.Stderr, "[DEBUG] Response headers: %v\n", resp.Header)
 		fmt.Fprintf(os.Stderr, "[DEBUG] Response body: %s\n", string(body))
+	}
+
+	if resp.StatusCode == 302 || resp.StatusCode == 301 {
+		location := resp.Header.Get("Location")
+		return fmt.Errorf("authentication required: server redirected to %s (check that /api/sprites/create is in PUBLIC_PATHS)", location)
 	}
 
 	if resp.StatusCode == 401 {
@@ -348,7 +357,11 @@ func getSpriteURL(config Config, spriteName string) error {
 		fmt.Fprintf(os.Stderr, "[DEBUG] Authorization: Basic %s...\n", auth[:20])
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // Don't follow redirects
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)

@@ -85,6 +85,17 @@ const PUBLIC_PATHS = [
   "/icon-512.png",
 ];
 
+// Check if path is an API key authenticated sprite endpoint
+function isSpriteAPIKeyPath(pathname: string): boolean {
+  // /api/sprites/:name/url
+  // /api/sprites/:name/console
+  // /api/sprites/create
+  if (pathname === "/api/sprites/create") return true;
+  if (pathname.match(/^\/api\/sprites\/[^/]+\/url$/)) return true;
+  if (pathname.match(/^\/api\/sprites\/[^/]+\/console$/)) return true;
+  return false;
+}
+
 // Validate API key from Basic Auth header
 // Accepts any key starting with "sk_" or "rk_" as username, password ignored
 export function validateApiKey(authHeader: string | null): boolean {
@@ -122,8 +133,12 @@ export function extractApiKey(authHeader: string | null): string | null {
 
 // Check if a path requires authentication
 export function requiresAuth(pathname: string): boolean {
-  // Static assets for login page
+  // Static assets for login page and public API endpoints
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p))) {
+    return false;
+  }
+  // Sprite API endpoints that use API key auth instead of session cookies
+  if (isSpriteAPIKeyPath(pathname)) {
     return false;
   }
   return true;
