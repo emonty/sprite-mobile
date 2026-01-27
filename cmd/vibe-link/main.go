@@ -508,6 +508,13 @@ func connectConsole(config Config, spriteName string) error {
 		for {
 			_, message, err := conn.ReadMessage()
 			if err != nil {
+				// Check if this is a normal closure
+				if closeErr, ok := err.(*websocket.CloseError); ok {
+					if closeErr.Code == websocket.CloseNormalClosure {
+						errChan <- nil // Normal exit, no error
+						return
+					}
+				}
 				errChan <- fmt.Errorf("websocket read error: %w", err)
 				return
 			}
@@ -536,7 +543,12 @@ func connectConsole(config Config, spriteName string) error {
 
 	// Wait for error or interrupt
 	err = <-errChan
-	fmt.Fprintf(os.Stderr, "\n%v\n", err)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\n%v\n", err)
+	} else {
+		// Normal exit - show clean disconnect message
+		fmt.Fprintf(os.Stderr, "\nDisconnected from console\n")
+	}
 
 	return nil
 }
