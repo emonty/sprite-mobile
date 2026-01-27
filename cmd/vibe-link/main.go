@@ -19,6 +19,14 @@ import (
 
 const version = "1.0.0"
 
+// stripTrailingSlash removes trailing slashes from a URL
+func stripTrailingSlash(s string) string {
+	for len(s) > 0 && s[len(s)-1] == '/' {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
 type Config struct {
 	BaseURL string
 	APIKey  string
@@ -145,7 +153,7 @@ func createCommand() {
 	}
 
 	config := Config{
-		BaseURL: *baseURL,
+		BaseURL: stripTrailingSlash(*baseURL),
 		APIKey:  *apiKey,
 		Debug:   *debug,
 	}
@@ -182,7 +190,7 @@ func consoleCommand() {
 	}
 
 	config := Config{
-		BaseURL: *baseURL,
+		BaseURL: stripTrailingSlash(*baseURL),
 		APIKey:  *apiKey,
 	}
 
@@ -219,7 +227,7 @@ func urlCommand() {
 	}
 
 	config := Config{
-		BaseURL: *baseURL,
+		BaseURL: stripTrailingSlash(*baseURL),
 		APIKey:  *apiKey,
 		Debug:   *debug,
 	}
