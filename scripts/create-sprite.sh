@@ -116,6 +116,14 @@ rm "$TEMP_CONFIG"
 sprite_exec_retry bash -c "echo '$CONFIG_B64' | base64 -d > ~/.sprite-config && chmod 600 ~/.sprite-config"
 echo "  Transferred ~/.sprite-config (excluded sprite-specific URLs and Tailscale)"
 
+# Transfer Claude credentials if they exist
+if [ -f "$HOME/.claude/.credentials.json" ]; then
+    echo "  Transferring Claude credentials..."
+    CREDS_B64=$(base64 -w0 "$HOME/.claude/.credentials.json" 2>/dev/null || base64 "$HOME/.claude/.credentials.json" | tr -d '\n')
+    sprite_exec_retry bash -c "mkdir -p ~/.claude && echo '$CREDS_B64' | base64 -d > ~/.claude/.credentials.json && chmod 600 ~/.claude/.credentials.json"
+    echo "  Transferred ~/.claude/.credentials.json"
+fi
+
 # Transfer Stripe credentials if they exist
 if [ -d "$HOME/.config/stripe" ]; then
     echo "  Transferring Stripe credentials..."
