@@ -336,7 +336,7 @@ func createSprite(config Config, spriteName string) error {
 	if result.PublicURL != "" {
 		fmt.Printf("\nYou can access it via:\n")
 		fmt.Printf("  • vibe-engine console %s\n", result.Name)
-		fmt.Printf("  • %s\n", result.PublicURL)
+		fmt.Printf("  • %s/vibe-engine\n", result.PublicURL)
 	} else {
 		fmt.Printf("\nYou can access it via: vibe-engine console %s\n", result.Name)
 	}
