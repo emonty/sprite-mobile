@@ -20,6 +20,19 @@ export function trySend(bg: BackgroundProcess, data: string) {
   }
 }
 
+// Build a clean environment for spawning Claude processes.
+// Removes CLAUDE_CODE_OAUTH_TOKEN so Claude uses its own credential
+// management (~/.claude/.credentials.json) which handles token refresh.
+function getClaudeEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key !== "CLAUDE_CODE_OAUTH_TOKEN" && value !== undefined) {
+      env[key] = value;
+    }
+  }
+  return env;
+}
+
 // Spawn Claude process
 export function spawnClaude(cwd: string, claudeSessionId?: string): Subprocess {
   const cmd = [
@@ -41,6 +54,7 @@ export function spawnClaude(cwd: string, claudeSessionId?: string): Subprocess {
     stdout: "pipe",
     stderr: "pipe",
     cwd: cwd || process.env.HOME,
+    env: getClaudeEnv(),
   });
 }
 
@@ -53,6 +67,7 @@ export async function generateChatName(message: string, sessionId: string, bg: B
       cmd: ["claude", "--print", "-p", prompt],
       stdout: "pipe",
       stderr: "pipe",
+      env: getClaudeEnv(),
     });
 
     const output = await new Response(proc.stdout).text();
