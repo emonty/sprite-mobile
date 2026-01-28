@@ -325,12 +325,14 @@
       wakeLog('Trying direct connection...');
       try {
         const config = await fetchConfigWithRetry(3, 500);
-        if (config?.publicUrl) {
+        if (config) {
           wakeLog('Direct connection OK');
-          spritePublicUrl = config.publicUrl;
+          if (config.publicUrl) {
+            spritePublicUrl = config.publicUrl;
+            startPublicKeepalive();
+          }
           updateSpriteName(config.spriteName || getSpriteNameFromUrl(spritePublicUrl));
           cacheConfig(config);
-          startPublicKeepalive();
           return true;
         }
       } catch (err) {

@@ -78,11 +78,13 @@ const PUBLIC_PATHS = [
   "/login.html",
   "/api/login",
   "/api/auth/status",
+  "/api/config",  // Needed for wake-up flow before login
   "/api/sprites/create",  // Uses API key auth instead
   "/styles.css",
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
+  "/sw.js",  // Service worker must be accessible for registration
 ];
 
 // Check if path is an API key authenticated sprite endpoint
