@@ -333,12 +333,11 @@ func createSprite(config Config, spriteName string) error {
 
 	// Success - show clean message
 	fmt.Printf("✓ %s created\n", result.Name)
+	fmt.Printf("\nYou can access it via:\n")
+	fmt.Printf("  • vibe-engine console %s\n", result.Name)
 	if result.PublicURL != "" {
-		fmt.Printf("\nYou can access it via:\n")
-		fmt.Printf("  • vibe-engine console %s\n", result.Name)
-		fmt.Printf("  • %s/vibe-engine\n", result.PublicURL)
-	} else {
-		fmt.Printf("\nYou can access it via: vibe-engine console %s\n", result.Name)
+		fmt.Printf("  • App:         %s\n", result.PublicURL)
+		fmt.Printf("  • Vibe-Engine: %s/vibe-engine\n", result.PublicURL)
 	}
 
 	// Only show full output in debug mode
