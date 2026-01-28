@@ -205,8 +205,10 @@ const server = Bun.serve({
 
     // Strip prefix for vibe-engine requests
     let pathname = url.pathname;
+    let strippedUrl = url;
     if (isVibeEngine) {
       pathname = url.pathname.slice(VIBE_ENGINE_PREFIX.length) || '/';
+      strippedUrl = new URL(pathname + url.search, url.origin);
     }
 
     // Handle CORS preflight
@@ -248,7 +250,7 @@ const server = Bun.serve({
 
     // API routes
     if (pathname.startsWith("/api/")) {
-      const response = await handleApi(req, url);
+      const response = await handleApi(req, strippedUrl);
       if (response) return addCorsHeaders(response);
     }
 
