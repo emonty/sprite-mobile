@@ -1,6 +1,6 @@
     // Register service worker for offline shell and cached config
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
+      navigator.serviceWorker.register('/vibe-engine/sw.js')
         .then((reg) => {
           console.log('Service worker registered');
           // Force immediate update check
@@ -144,7 +144,7 @@
       if (keepaliveWs && keepaliveWs.readyState === WebSocket.OPEN) return;
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      keepaliveWs = new WebSocket(`${protocol}//${location.host}/ws/keepalive`);
+      keepaliveWs = new WebSocket(`${protocol}//${location.host}/vibe-engine/ws/keepalive`);
 
       keepaliveWs.onopen = () => {
         console.log('Keepalive connected - sprite will stay awake');
@@ -267,7 +267,7 @@
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 5000);
 
-          const res = await fetch(`/api/config?_t=${Date.now()}`, { signal: controller.signal });
+          const res = await fetch(`/vibe-engine/api/config?_t=${Date.now()}`, { signal: controller.signal });
           clearTimeout(timeout);
 
           if (res.ok) {
@@ -419,14 +419,14 @@
 
     // Sessions API
     async function loadSessions() {
-      const res = await fetch('/api/sessions');
+      const res = await fetch('/vibe-engine/api/sessions');
       sessions = await res.json();
       renderSessionsList();
       return sessions;
     }
 
     async function createSession(name) {
-      const res = await fetch('/api/sessions', {
+      const res = await fetch('/vibe-engine/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
@@ -442,7 +442,7 @@
       e.stopPropagation();
       e.preventDefault();
 
-      await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      await fetch(`/vibe-engine/api/sessions/${id}`, { method: 'DELETE' });
       sessions = sessions.filter(s => s.id !== id);
       if (currentSession?.id === id) {
         currentSession = null;
@@ -541,7 +541,7 @@
       assistantContent = '';
 
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${protocol}//${location.host}/ws?session=${sessionId}`);
+      ws = new WebSocket(`${protocol}//${location.host}/vibe-engine/ws?session=${sessionId}`);
 
       ws.onopen = () => {
         console.log('[Client] WebSocket connected to session:', sessionId);
@@ -643,7 +643,7 @@
               renderSessionsList();
 
               // Notify backend to update session ID
-              fetch('/api/sessions/' + oldId + '/update-id', {
+              fetch('/vibe-engine/api/sessions/' + oldId + '/update-id', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ newId: claudeUUID })
@@ -672,7 +672,7 @@
             for (const m of msg.messages) {
               if (m.role === 'user') {
                 // Build image URL if message has an attached image
-                const imageUrl = m.image ? `/api/uploads/${currentSession.id}/${m.image.filename}` : null;
+                const imageUrl = m.image ? `/vibe-engine/api/uploads/${currentSession.id}/${m.image.filename}` : null;
                 addUserMessage(m.content, imageUrl);
               } else if (m.role === 'assistant') {
                 addStoredAssistantMessage(m.content);
@@ -708,7 +708,7 @@
           pendingUserMessage = true;
           if (msg.message) {
             const m = msg.message;
-            const imageUrl = m.image ? `/api/uploads/${currentSession.id}/${m.image.filename}` : null;
+            const imageUrl = m.image ? `/vibe-engine/api/uploads/${currentSession.id}/${m.image.filename}` : null;
             addUserMessage(m.content, imageUrl);
             showThinkingIndicator();
           }
@@ -859,7 +859,7 @@
 
         // Update session metadata in backend with assistant's response
         if (currentSession && assistantContent) {
-          fetch(`/api/sessions/${currentSession.id}/update-message`, {
+          fetch(`/vibe-engine/api/sessions/${currentSession.id}/update-message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role: 'assistant', content: assistantContent })
@@ -1043,7 +1043,7 @@
 
       // Update session metadata in backend
       if (currentSession) {
-        fetch(`/api/sessions/${currentSession.id}/update-message`, {
+        fetch(`/vibe-engine/api/sessions/${currentSession.id}/update-message`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ role: 'user', content: text || '[Image]' })
@@ -1142,7 +1142,7 @@
       formData.append('file', resizedFile);
 
       try {
-        const res = await fetch(`/api/upload?session=${currentSession.id}`, {
+        const res = await fetch(`/vibe-engine/api/upload?session=${currentSession.id}`, {
           method: 'POST',
           body: formData,
         });
@@ -1209,7 +1209,7 @@
 
       if (newName !== currentSession.name && currentSession) {
         currentSession.name = newName;
-        await fetch(`/api/sessions/${currentSession.id}`, {
+        await fetch(`/vibe-engine/api/sessions/${currentSession.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: newName }),
@@ -1224,7 +1224,7 @@
       regenerateTitleBtn.classList.add('spinning');
 
       try {
-        const res = await fetch(`/api/sessions/${currentSession.id}/regenerate-title`, {
+        const res = await fetch(`/vibe-engine/api/sessions/${currentSession.id}/regenerate-title`, {
           method: 'POST',
         });
 
@@ -1320,7 +1320,7 @@
     }
 
     async function loadSprites() {
-      const res = await fetch('/api/sprites');
+      const res = await fetch('/vibe-engine/api/sprites');
       sprites = await res.json();
       renderSpritesList();
     }
@@ -1340,7 +1340,7 @@
       if (sprite && sprite.publicUrl !== publicUrl) {
         // Update the sprite's publicUrl
         try {
-          await fetch(`/api/sprites/${sprite.id}`, {
+          await fetch(`/vibe-engine/api/sprites/${sprite.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ publicUrl }),
@@ -1397,7 +1397,7 @@
         return;
       }
 
-      await fetch('/api/sprites', {
+      await fetch('/vibe-engine/api/sprites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, address, port: 8080 }),
@@ -1411,7 +1411,7 @@
     async function deleteSprite(id, e) {
       e.stopPropagation();
       if (!confirm('Delete this sprite?')) return;
-      await fetch(`/api/sprites/${id}`, { method: 'DELETE' });
+      await fetch(`/vibe-engine/api/sprites/${id}`, { method: 'DELETE' });
       loadSprites();
     }
 
@@ -1435,7 +1435,7 @@
     // Network sprites management
     async function checkNetworkStatus() {
       try {
-        const res = await fetch('/api/network/status');
+        const res = await fetch('/vibe-engine/api/network/status');
         const status = await res.json();
         networkEnabled = status.enabled;
         if (networkEnabled && networkSpritesSection) {
@@ -1450,7 +1450,7 @@
       if (!networkEnabled) return;
 
       try {
-        const res = await fetch('/api/network/sprites');
+        const res = await fetch('/vibe-engine/api/network/sprites');
         networkSprites = await res.json();
         renderNetworkSpritesList();
       } catch (err) {
@@ -1517,7 +1517,7 @@
           const hostname = btn.dataset.hostname;
           if (!confirm(`Remove "${hostname}" from the sprite network?`)) return;
           try {
-            const res = await fetch(`/api/network/sprites/${encodeURIComponent(hostname)}`, { method: 'DELETE' });
+            const res = await fetch(`/vibe-engine/api/network/sprites/${encodeURIComponent(hostname)}`, { method: 'DELETE' });
             if (res.ok) {
               await loadNetworkSprites();
             } else {
@@ -1574,7 +1574,7 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
         try {
-          await fetch('/api/logout', { method: 'POST' });
+          await fetch('/vibe-engine/api/logout', { method: 'POST' });
           window.location.href = '/login.html';
         } catch (err) {
           console.error('Logout failed:', err);
@@ -1606,7 +1606,7 @@
       // Load my tasks
       myTasksList.innerHTML = '<div class="loading">Loading...</div>';
       try {
-        const res = await fetch('/api/distributed-tasks/mine');
+        const res = await fetch('/vibe-engine/api/distributed-tasks/mine');
         const data = await res.json();
 
         if (data.error) {
@@ -1628,7 +1628,7 @@
       // Load all sprites status
       allTasksStatus.innerHTML = '<div class="loading">Loading...</div>';
       try {
-        const res = await fetch('/api/distributed-tasks/status');
+        const res = await fetch('/vibe-engine/api/distributed-tasks/status');
         const data = await res.json();
 
         if (data.error) {
@@ -1655,7 +1655,7 @@
       // Load all tasks
       allTasksList.innerHTML = '<div class="loading">Loading...</div>';
       try {
-        const res = await fetch('/api/distributed-tasks');
+        const res = await fetch('/vibe-engine/api/distributed-tasks');
         const data = await res.json();
 
         if (data.error) {
@@ -1712,7 +1712,7 @@
       }
 
       try {
-        const res = await fetch(`/api/distributed-tasks/${taskId}/cancel`, {
+        const res = await fetch(`/vibe-engine/api/distributed-tasks/${taskId}/cancel`, {
           method: 'POST',
         });
 
@@ -1733,7 +1733,7 @@
       // Fetch available sprites
       let sprites = [];
       try {
-        const res = await fetch('/api/distributed-tasks/status');
+        const res = await fetch('/vibe-engine/api/distributed-tasks/status');
         const data = await res.json();
         if (!data.error) {
           sprites = data.sprites.map(s => s.spriteName);
@@ -1752,7 +1752,7 @@
       }
 
       try {
-        const res = await fetch(`/api/distributed-tasks/${taskId}/reassign`, {
+        const res = await fetch(`/vibe-engine/api/distributed-tasks/${taskId}/reassign`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ assignedTo: newSprite.trim() }),
@@ -1813,7 +1813,7 @@
       externalSessionsList.innerHTML = '<div class="loading">Loading sessions...</div>';
 
       try {
-        const res = await fetch('/api/claude-sessions');
+        const res = await fetch('/vibe-engine/api/claude-sessions');
         const cliSessions = await res.json();
 
         if (cliSessions.length === 0) {
@@ -1858,7 +1858,7 @@
       closeSidebar();
 
       // Create a new session that attaches to the external Claude session
-      const res = await fetch('/api/sessions', {
+      const res = await fetch('/vibe-engine/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

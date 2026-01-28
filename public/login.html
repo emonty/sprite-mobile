@@ -6,10 +6,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1a1a2e">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="manifest" href="/vibe-engine/manifest.json">
+  <link rel="apple-touch-icon" href="/vibe-engine/icon-192.png">
   <title>Login - Vibe-Link</title>
-  <link rel="stylesheet" href="/styles.css?v=2">
+  <link rel="stylesheet" href="/vibe-engine/styles.css?v=3">
   <style>
     body {
       display: flex;
@@ -158,7 +158,7 @@
       hideError();
 
       try {
-        const response = await fetch('/api/login', {
+        const response = await fetch('/vibe-engine/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password }),
@@ -168,7 +168,7 @@
 
         if (response.ok && data.success) {
           // Redirect to main app
-          window.location.href = '/';
+          window.location.href = '/vibe-engine/';
         } else {
           showError(data.error || 'Invalid password');
           loginBtn.disabled = false;
@@ -191,11 +191,11 @@
     }
 
     // Check if already authenticated
-    fetch('/api/auth/status')
+    fetch('/vibe-engine/api/auth/status')
       .then(r => r.json())
       .then(data => {
         if (data.authenticated) {
-          window.location.href = '/';
+          window.location.href = '/vibe-engine/';
         }
       })
       .catch(() => {});

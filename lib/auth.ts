@@ -65,12 +65,12 @@ export function getSessionFromCookie(cookieHeader: string | null): string | null
 
 // Create session cookie
 export function createSessionCookie(token: string): string {
-  return `sprite_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_DURATION / 1000}`;
+  return `sprite_session=${token}; Path=/vibe-engine; HttpOnly; SameSite=Strict; Max-Age=${SESSION_DURATION / 1000}`;
 }
 
 // Create logout cookie (expires immediately)
 export function createLogoutCookie(): string {
-  return "sprite_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0";
+  return "sprite_session=; Path=/vibe-engine; HttpOnly; SameSite=Strict; Max-Age=0";
 }
 
 // Paths that don't require authentication

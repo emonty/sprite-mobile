@@ -102,7 +102,46 @@ const GO_HUB_URL = process.env.GO_HUB_URL || "ws://localhost:9090";
 export const websocketHandlers = {
   open(ws: any) {
     allClients.add(ws);
-    const data = ws.data as { type?: string; sessionId?: string; cwd?: string; claudeSessionId?: string; spriteName?: string };
+    const data = ws.data as { type?: string; sessionId?: string; cwd?: string; claudeSessionId?: string; spriteName?: string; url?: URL };
+
+    // Handle dev server proxy WebSocket connections
+    if (data.type === "dev-server-proxy" && data.url) {
+      const targetUrl = `ws://localhost:3000${data.url.pathname}${data.url.search}`;
+      console.log(`[Dev Server Proxy] Proxying WebSocket to ${targetUrl}`);
+
+      try {
+        const devWs = new WebSocket(targetUrl);
+        ws.data.devWs = devWs;
+
+        // Forward messages: dev server → client
+        devWs.onmessage = (event: any) => {
+          if (ws.readyState === 1) {
+            ws.send(event.data);
+          }
+        };
+
+        // Handle connection lifecycle
+        devWs.onopen = () => {
+          console.log(`[Dev Server Proxy] Connected to dev server WebSocket`);
+        };
+
+        devWs.onclose = () => {
+          console.log(`[Dev Server Proxy] Dev server WebSocket closed`);
+          if (ws.readyState === 1) {
+            ws.close();
+          }
+        };
+
+        devWs.onerror = () => {
+          console.error(`[Dev Server Proxy] Dev server WebSocket error`);
+          ws.close();
+        };
+      } catch (err) {
+        console.error(`[Dev Server Proxy] Failed to connect to dev server:`, err);
+        ws.close();
+      }
+      return;
+    }
 
     // Handle sprite console connections
     if (data.type === "sprite-console" && data.spriteName) {
@@ -261,7 +300,15 @@ export const websocketHandlers = {
   },
 
   async message(ws: any, message: any) {
-    const wsData = ws.data as { type?: string; sessionId?: string };
+    const wsData = ws.data as { type?: string; sessionId?: string; devWs?: WebSocket };
+
+    // Handle dev server proxy messages
+    if (wsData.type === "dev-server-proxy" && wsData.devWs) {
+      if (wsData.devWs.readyState === 1) {
+        wsData.devWs.send(message);
+      }
+      return;
+    }
 
     // Handle sprite console messages
     if (wsData.type === "sprite-console") {
@@ -459,7 +506,20 @@ export const websocketHandlers = {
 
   close(ws: any) {
     allClients.delete(ws);
-    const wsData = ws.data as { type?: string; sessionId?: string };
+    const wsData = ws.data as { type?: string; sessionId?: string; devWs?: WebSocket };
+
+    // Handle dev server proxy disconnections
+    if (wsData.type === "dev-server-proxy" && wsData.devWs) {
+      console.log(`[Dev Server Proxy] Closing connection`);
+      try {
+        if (wsData.devWs.readyState === 1) {
+          wsData.devWs.close();
+        }
+      } catch (err) {
+        console.error(`[Dev Server Proxy] Error closing dev server connection:`, err);
+      }
+      return;
+    }
 
     // Handle sprite console disconnections
     if (wsData.type === "sprite-console") {

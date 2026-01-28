@@ -1,19 +1,19 @@
 // Service Worker for Sprite Mobile PWA
 // Caches shell for offline-first loading and stores public URL for sprite wake-up
 
-const CACHE_VERSION = 'v43';
+const CACHE_VERSION = 'v44-vibe-engine';
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 const CONFIG_CACHE = `config-${CACHE_VERSION}`;
 
 // Files to cache for the app shell
 const SHELL_FILES = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  '/vibe-engine/',
+  '/vibe-engine/index.html',
+  '/vibe-engine/styles.css',
+  '/vibe-engine/app.js',
+  '/vibe-engine/manifest.json',
+  '/vibe-engine/icon-192.png',
+  '/vibe-engine/icon-512.png',
 ];
 
 // CDN resources to cache
@@ -152,6 +152,12 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Only cache vibe-engine paths, ignore proxied requests
+  if (url.origin === self.location.origin && !url.pathname.startsWith('/vibe-engine')) {
+    // Don't intercept requests to user's dev server
+    return;
+  }
+
   // Navigation requests: network-first, fall back to cached shell or offline page
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -161,14 +167,14 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(SHELL_CACHE).then((cache) => {
-              cache.put('/index.html', clone);
+              cache.put('/vibe-engine/index.html', clone);
             });
           }
           return response;
         })
         .catch(() => {
           // Network failed, try cache
-          return caches.match('/index.html').then((cached) => {
+          return caches.match('/vibe-engine/index.html').then((cached) => {
             if (cached) return cached;
             // No cache either, show offline page
             return new Response(OFFLINE_HTML, {
@@ -180,16 +186,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // /api/config: network-only for wake detection, cache via message handler
+  // /vibe-engine/api/config: network-only for wake detection, cache via message handler
   // Don't fall back to cache here - we need to know if sprite is actually awake
-  if (url.pathname === '/api/config') {
+  if (url.pathname === '/vibe-engine/api/config') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           // Clone and cache under canonical path (no query string) for offline page
           const clone = response.clone();
           caches.open(CONFIG_CACHE).then((cache) => {
-            cache.put('/api/config', clone);
+            cache.put('/vibe-engine/api/config', clone);
           });
           return response;
         })
@@ -198,13 +204,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Other API calls: network-only (need live sprite)
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) {
+  if (url.pathname.startsWith('/vibe-engine/api/') || url.pathname.startsWith('/vibe-engine/ws')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
   // Static assets: network-first for app files, cache-first for CDN
   const isAppFile = url.origin === self.location.origin &&
+                    url.pathname.startsWith('/vibe-engine/') &&
                     (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
 
   if (isAppFile) {
@@ -252,14 +259,14 @@ self.addEventListener('message', (event) => {
       const response = new Response(JSON.stringify(event.data.config), {
         headers: { 'Content-Type': 'application/json' }
       });
-      cache.put('/api/config', response);
+      cache.put('/vibe-engine/api/config', response);
     });
   }
 
   if (event.data.type === 'GET_CACHED_CONFIG') {
     // Return cached config to the requesting client
     caches.open(CONFIG_CACHE).then((cache) => {
-      cache.match('/api/config').then((response) => {
+      cache.match('/vibe-engine/api/config').then((response) => {
         if (response) {
           response.json().then((config) => {
             event.source.postMessage({ type: 'CACHED_CONFIG', config });
