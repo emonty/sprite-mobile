@@ -16,15 +16,15 @@ This creates the binary at `bin/vibe-engine`.
 Add your API key to your environment:
 
 ```bash
-export SPRITE_API_KEY=sk_your_api_key_here
-export SPRITE_API_URL=http://localhost:8081  # or your sprite URL
+export VIBE_ENGINE_API_KEY=sk_your_api_key_here
+export VIBE_ENGINE_API_URL=http://localhost:8081  # or your sprite URL
 ```
 
 For permanent configuration, add these to your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-echo 'export SPRITE_API_KEY=sk_your_api_key_here' >> ~/.bashrc
-echo 'export SPRITE_API_URL=http://localhost:8081' >> ~/.bashrc
+echo 'export VIBE_ENGINE_API_KEY=sk_your_api_key_here' >> ~/.bashrc
+echo 'export VIBE_ENGINE_API_URL=http://localhost:8081' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -137,7 +137,7 @@ vibe-engine console database
 Instead of passing `-key` every time:
 
 ```bash
-export SPRITE_API_KEY=sk_your_key
+export VIBE_ENGINE_API_KEY=sk_your_key
 vibe-engine create sprite1
 vibe-engine console sprite1
 ```
@@ -146,11 +146,11 @@ vibe-engine console sprite1
 
 ```bash
 # Local development
-export SPRITE_API_URL=http://localhost:8081
+export VIBE_ENGINE_API_URL=http://localhost:8081
 vibe-engine console local-dev
 
 # Production
-export SPRITE_API_URL=https://prod-sprite.fly.dev
+export VIBE_ENGINE_API_URL=https://prod-sprite.fly.dev
 vibe-engine console production
 ```
 
@@ -182,10 +182,10 @@ Or just open a new terminal tab.
 
 ### "API key required"
 
-You forgot to set `SPRITE_API_KEY` or pass `-key`:
+You forgot to set `VIBE_ENGINE_API_KEY` or pass `-key`:
 
 ```bash
-export SPRITE_API_KEY=sk_your_key
+export VIBE_ENGINE_API_KEY=sk_your_key
 # OR
 vibe-engine create my-sprite -key sk_your_key
 ```
@@ -199,7 +199,7 @@ Your API key is wrong or expired. Get a new one and update your environment.
 Make sure:
 1. Your sprite exists: `sprite list`
 2. sprite-mobile is running: `sprite-env services list`
-3. The URL is correct: check `SPRITE_API_URL`
+3. The URL is correct: check `VIBE_ENGINE_API_URL`
 
 ### "command not found: vibe-engine"
 

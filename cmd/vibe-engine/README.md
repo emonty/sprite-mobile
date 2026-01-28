@@ -134,10 +134,10 @@ Configure default settings via environment variables:
 
 ```bash
 # Set API key
-export SPRITE_API_KEY=sk_test_12345
+export VIBE_ENGINE_API_KEY=sk_test_12345
 
 # Set base URL
-export SPRITE_API_URL=https://my-sprite.fly.dev
+export VIBE_ENGINE_API_URL=https://my-sprite.fly.dev
 
 # Now you can omit the flags
 vibe-engine create my-new-sprite
@@ -154,7 +154,7 @@ Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make them per
 Your API key must start with `sk_` or `rk_`. You can provide it via:
 
 1. `-key` flag
-2. `SPRITE_API_KEY` environment variable
+2. `VIBE_ENGINE_API_KEY` environment variable
 
 ### Base URL
 
@@ -164,7 +164,7 @@ The base URL for the API. Defaults:
 
 You can override via:
 1. `-url` flag
-2. `SPRITE_API_URL` environment variable
+2. `VIBE_ENGINE_API_URL` environment variable
 
 The tool automatically converts HTTP(S) URLs to WS(S) for console connections.
 
@@ -174,8 +174,8 @@ The tool automatically converts HTTP(S) URLs to WS(S) for console connections.
 
 ```bash
 # Set credentials once
-export SPRITE_API_KEY=sk_test_12345
-export SPRITE_API_URL=https://sprite.example.com
+export VIBE_ENGINE_API_KEY=sk_test_12345
+export VIBE_ENGINE_API_URL=https://sprite.example.com
 
 # Create a new sprite
 vibe-engine create dev-environment
@@ -247,7 +247,7 @@ This creates:
 
 ### "API key required"
 
-Make sure you're providing an API key via `-key` flag or `SPRITE_API_KEY` environment variable.
+Make sure you're providing an API key via `-key` flag or `VIBE_ENGINE_API_KEY` environment variable.
 
 ### "API key must start with 'sk_' or 'rk_'"
 

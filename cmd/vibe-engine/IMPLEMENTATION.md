@@ -49,8 +49,8 @@ Supports both flags and environment variables:
 
 | Setting | Flag | Environment Variable | Default |
 |---------|------|---------------------|---------|
-| API Key | `-key` | `SPRITE_API_KEY` | (required) |
-| Base URL | `-url` | `SPRITE_API_URL` | `http://localhost:8081` (create)<br>`ws://localhost:8081` (console) |
+| API Key | `-key` | `VIBE_ENGINE_API_KEY` | (required) |
+| Base URL | `-url` | `VIBE_ENGINE_API_URL` | `http://localhost:8081` (create)<br>`ws://localhost:8081` (console) |
 
 Environment variables take precedence over defaults but are overridden by flags.
 

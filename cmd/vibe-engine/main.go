@@ -68,7 +68,7 @@ func main() {
 	case "url":
 		urlCommand()
 	case "version":
-		fmt.Printf("vibe-link version %s\n", version)
+		fmt.Printf("vibe-engine version %s\n", version)
 	case "help", "-h", "--help":
 		printUsage()
 	default:
@@ -79,71 +79,71 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`vibe-link - CLI utility for Sprite Console API
+	fmt.Println(`vibe-engine - CLI utility for Vibe Engine Console API
 
 Usage:
-  vibe-link <command> [options]
+  vibe-engine <command> [options]
 
 Commands:
-  create <name>              Create a new sprite
-  console <name>             Connect to a sprite's console
-  url <name>                 Get a sprite's public URL
+  create <name>              Create a new instance
+  console <name>             Connect to an instance console
+  url <name>                 Get an instance's public URL
   version                    Show version information
   help                       Show this help message
 
 Create Options:
   -url <base-url>            Base URL (default: http://localhost:8081)
-  -key <api-key>             API key (or set SPRITE_API_KEY env var)
+  -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
 
 Console Options:
   -url <base-url>            Base URL (default: ws://localhost:8081)
-  -key <api-key>             API key (or set SPRITE_API_KEY env var)
+  -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
 
 URL Options:
   -url <base-url>            Base URL (default: http://localhost:8081)
-  -key <api-key>             API key (or set SPRITE_API_KEY env var)
+  -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
 
 Environment Variables:
-  SPRITE_API_KEY             API key for authentication
-  SPRITE_API_URL             Base URL for API
+  VIBE_ENGINE_API_KEY             API key for authentication
+  VIBE_ENGINE_API_URL             Base URL for API
 
 Examples:
-  # Create a new sprite
-  vibe-link create my-new-sprite -key sk_test_12345
+  # Create a new instance
+  vibe-engine create my-new-instance -key sk_test_12345
 
-  # Connect to sprite console
-  vibe-link console my-sprite -key sk_test_12345
+  # Connect to instance console
+  vibe-engine console my-instance -key sk_test_12345
 
-  # Get sprite URL
-  vibe-link url my-sprite -key sk_test_12345
+  # Get instance URL
+  vibe-engine url my-instance -key sk_test_12345
 
   # Using environment variables
-  export SPRITE_API_KEY=sk_test_12345
-  export SPRITE_API_URL=https://my-sprite.fly.dev
-  vibe-link create my-new-sprite
-  vibe-link console my-sprite
-  vibe-link url my-sprite
+  export VIBE_ENGINE_API_KEY=sk_test_12345
+  export VIBE_ENGINE_API_URL=https://my-instance.fly.dev
+  vibe-engine create my-new-instance
+  vibe-engine console my-instance
+  vibe-engine url my-instance
 `)
 }
 
 func createCommand() {
 	createFlags := flag.NewFlagSet("create", flag.ExitOnError)
-	baseURL := createFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "http://localhost:8081"), "Base URL")
-	apiKey := createFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+	baseURL := createFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "http://localhost:8081"), "Base URL")
+	apiKey := createFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
 	debug := createFlags.Bool("debug", false, "Enable debug output")
 
 	createFlags.Parse(os.Args[2:])
 
 	if createFlags.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "Error: sprite name required")
-		fmt.Fprintln(os.Stderr, "Usage: vibe-link create <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Error: instance name required")
+		fmt.Fprintln(os.Stderr, "Usage: vibe-engine create <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
 	spriteName := createFlags.Arg(0)
 
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or SPRITE_API_KEY env var)")
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or VIBE_ENGINE_API_KEY env var)")
 		os.Exit(1)
 	}
 
@@ -166,22 +166,22 @@ func createCommand() {
 
 func consoleCommand() {
 	consoleFlags := flag.NewFlagSet("console", flag.ExitOnError)
-	baseURL := consoleFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "ws://localhost:8081"), "Base URL")
-	apiKey := consoleFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+	baseURL := consoleFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "ws://localhost:8081"), "Base URL")
+	apiKey := consoleFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
 	debug := consoleFlags.Bool("debug", false, "Enable debug output")
 
 	consoleFlags.Parse(os.Args[2:])
 
 	if consoleFlags.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "Error: sprite name required")
-		fmt.Fprintln(os.Stderr, "Usage: vibe-link console <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Error: instance name required")
+		fmt.Fprintln(os.Stderr, "Usage: vibe-engine console <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
 	spriteName := consoleFlags.Arg(0)
 
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or SPRITE_API_KEY env var)")
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or VIBE_ENGINE_API_KEY env var)")
 		os.Exit(1)
 	}
 
@@ -204,22 +204,22 @@ func consoleCommand() {
 
 func urlCommand() {
 	urlFlags := flag.NewFlagSet("url", flag.ExitOnError)
-	baseURL := urlFlags.String("url", getEnvOrDefault("SPRITE_API_URL", "http://localhost:8081"), "Base URL")
-	apiKey := urlFlags.String("key", os.Getenv("SPRITE_API_KEY"), "API key")
+	baseURL := urlFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "http://localhost:8081"), "Base URL")
+	apiKey := urlFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
 	debug := urlFlags.Bool("debug", false, "Enable debug output")
 
 	urlFlags.Parse(os.Args[2:])
 
 	if urlFlags.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "Error: sprite name required")
-		fmt.Fprintln(os.Stderr, "Usage: vibe-link url <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Error: instance name required")
+		fmt.Fprintln(os.Stderr, "Usage: vibe-engine url <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
 	spriteName := urlFlags.Arg(0)
 
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or SPRITE_API_KEY env var)")
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or VIBE_ENGINE_API_KEY env var)")
 		os.Exit(1)
 	}
 
@@ -241,7 +241,7 @@ func urlCommand() {
 }
 
 func createSprite(config Config, spriteName string) error {
-	fmt.Printf("Creating sprite: %s\n", spriteName)
+	fmt.Printf("Creating instance: %s\n", spriteName)
 
 	reqBody := CreateSpriteRequest{
 		Name: spriteName,
@@ -321,24 +321,24 @@ func createSprite(config Config, spriteName string) error {
 	}
 
 	if !result.Success {
-		fmt.Printf("✗ Failed to create sprite\n")
+		fmt.Printf("✗ Failed to create instance\n")
 		if result.Error != "" {
 			fmt.Printf("Error: %s\n", result.Error)
 		}
 		if result.Output != "" {
 			fmt.Printf("\nOutput:\n%s\n", result.Output)
 		}
-		return fmt.Errorf("sprite creation failed")
+		return fmt.Errorf("instance creation failed")
 	}
 
 	// Success - show clean message
 	fmt.Printf("✓ %s created\n", result.Name)
 	if result.PublicURL != "" {
 		fmt.Printf("\nYou can access it via:\n")
-		fmt.Printf("  • vibe-link console %s\n", result.Name)
+		fmt.Printf("  • vibe-engine console %s\n", result.Name)
 		fmt.Printf("  • %s\n", result.PublicURL)
 	} else {
-		fmt.Printf("\nYou can access it via: vibe-link console %s\n", result.Name)
+		fmt.Printf("\nYou can access it via: vibe-engine console %s\n", result.Name)
 	}
 
 	// Only show full output in debug mode
@@ -350,7 +350,7 @@ func createSprite(config Config, spriteName string) error {
 }
 
 func getSpriteURL(config Config, spriteName string) error {
-	fmt.Printf("Getting URL for sprite: %s\n", spriteName)
+	fmt.Printf("Getting URL for instance: %s\n", spriteName)
 
 	apiURL := fmt.Sprintf("%s/api/sprites/%s/url", config.BaseURL, url.PathEscape(spriteName))
 
@@ -397,7 +397,7 @@ func getSpriteURL(config Config, spriteName string) error {
 	}
 
 	if resp.StatusCode == 404 {
-		return fmt.Errorf("sprite not found")
+		return fmt.Errorf("instance not found")
 	}
 
 	if resp.StatusCode != 200 {
@@ -419,13 +419,14 @@ func getSpriteURL(config Config, spriteName string) error {
 		if result.Error != "" {
 			return fmt.Errorf("%s", result.Error)
 		}
-		return fmt.Errorf("failed to get sprite URL")
+		return fmt.Errorf("failed to get instance URL")
 	}
 
 	if result.PublicURL != "" {
-		fmt.Printf("%s\n", result.PublicURL)
+		fmt.Printf("App:         %s\n", result.PublicURL)
+		fmt.Printf("Vibe-Engine: %s/vibe-engine\n", result.PublicURL)
 	} else {
-		fmt.Println("No public URL available for this sprite")
+		fmt.Println("No public URL available for this instance")
 	}
 
 	return nil
