@@ -1,4 +1,4 @@
-# vibe-link CLI Implementation
+# vibe-engine CLI Implementation
 
 ## Overview
 
@@ -9,7 +9,7 @@ A Go-based CLI utility for interacting with the Sprite Console API. Provides com
 ### Command Structure
 
 ```
-vibe-link
+vibe-engine
 ├── create   - Create a new sprite via REST API
 ├── console  - Connect to sprite console via WebSocket
 ├── version  - Show version information
@@ -147,15 +147,15 @@ main.go (530 lines)
 ### Local Build
 
 ```bash
-go build -o vibe-link .
+go build -o vibe-engine .
 ```
 
 ### Cross-Platform Build
 
 ```bash
-GOOS=linux GOARCH=amd64 go build -o vibe-link-linux-amd64 .
-GOOS=darwin GOARCH=arm64 go build -o vibe-link-darwin-arm64 .
-GOOS=windows GOARCH=amd64 go build -o vibe-link-windows-amd64.exe .
+GOOS=linux GOARCH=amd64 go build -o vibe-engine-linux-amd64 .
+GOOS=darwin GOARCH=arm64 go build -o vibe-engine-darwin-arm64 .
+GOOS=windows GOARCH=amd64 go build -o vibe-engine-windows-amd64.exe .
 ```
 
 ### Using Makefile
@@ -173,13 +173,13 @@ make clean       # Remove build artifacts
 
 ```bash
 # Test help
-./vibe-link help
+./vibe-engine help
 
 # Test create (requires valid API key)
-./vibe-link create test-sprite -key sk_test_12345 -url http://localhost:8081
+./vibe-engine create test-sprite -key sk_test_12345 -url http://localhost:8081
 
 # Test console (requires existing sprite)
-./vibe-link console test-sprite -key sk_test_12345 -url ws://localhost:8081
+./vibe-engine console test-sprite -key sk_test_12345 -url ws://localhost:8081
 ```
 
 ### Integration Testing
@@ -250,7 +250,7 @@ make clean       # Remove build artifacts
 
 ## Comparison with Alternatives
 
-| Feature | vibe-link | sprite CLI | SSH |
+| Feature | vibe-engine | sprite CLI | SSH |
 |---------|-----------|-----------|-----|
 | Create sprites | ✅ | ✅ | ❌ |
 | Console access | ✅ | ✅ | ✅ |
@@ -263,7 +263,7 @@ make clean       # Remove build artifacts
 ## Files
 
 ```
-cmd/vibe-link/
+cmd/vibe-engine/
 ├── main.go              # Main application code (530 lines)
 ├── go.mod               # Go module definition
 ├── go.sum               # Dependency checksums
@@ -273,7 +273,7 @@ cmd/vibe-link/
 ├── QUICKSTART.md        # Quick start guide
 ├── IMPLEMENTATION.md    # This file
 └── bin/                 # Build output (gitignored)
-    └── vibe-link       # Compiled binary
+    └── vibe-engine       # Compiled binary
 ```
 
 ## License

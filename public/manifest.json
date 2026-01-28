@@ -1,6 +1,6 @@
 {
-  "name": "Vibe-Link",
-  "short_name": "Vibe-Link",
+  "name": "Vibe-Engine",
+  "short_name": "Vibe-Engine",
   "description": "Mobile interface for chatting with Claude Code on a Sprite",
   "start_url": "/vibe-engine/",
   "display": "standalone",

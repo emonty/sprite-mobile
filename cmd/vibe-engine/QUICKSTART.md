@@ -1,15 +1,15 @@
 # Quick Start Guide
 
-Get up and running with `vibe-link` in 5 minutes.
+Get up and running with `vibe-engine` in 5 minutes.
 
 ## 1. Build the Tool
 
 ```bash
-cd ~/.sprite-mobile/cmd/vibe-link
+cd ~/.sprite-mobile/cmd/vibe-engine
 make build
 ```
 
-This creates the binary at `bin/vibe-link`.
+This creates the binary at `bin/vibe-engine`.
 
 ## 2. Set Up Environment
 
@@ -31,7 +31,7 @@ source ~/.bashrc
 ## 3. Create Your First Sprite
 
 ```bash
-./bin/vibe-link create my-first-sprite
+./bin/vibe-engine create my-first-sprite
 ```
 
 You should see:
@@ -45,7 +45,7 @@ Public URL: https://my-first-sprite.fly.dev
 ## 4. Connect to the Console
 
 ```bash
-./bin/vibe-link console my-first-sprite
+./bin/vibe-engine console my-first-sprite
 ```
 
 You're now in an interactive shell on your sprite! Try some commands:
@@ -69,13 +69,13 @@ exit
 
 ## 5. Install Globally (Optional)
 
-To use `vibe-link` from anywhere:
+To use `vibe-engine` from anywhere:
 
 ```bash
 make install
 ```
 
-This installs to `~/bin/vibe-link`. Make sure `~/bin` is in your PATH:
+This installs to `~/bin/vibe-engine`. Make sure `~/bin` is in your PATH:
 
 ```bash
 export PATH="$PATH:$HOME/bin"
@@ -85,7 +85,7 @@ echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc
 Now you can run it from anywhere:
 
 ```bash
-vibe-link console my-first-sprite
+vibe-engine console my-first-sprite
 ```
 
 ## Common Workflows
@@ -94,10 +94,10 @@ vibe-link console my-first-sprite
 
 ```bash
 # Create a new sprite
-vibe-link create dev-environment
+vibe-engine create dev-environment
 
 # Connect to it
-vibe-link console dev-environment
+vibe-engine console dev-environment
 
 # Once connected, set up your environment
 git clone https://github.com/myuser/myrepo
@@ -120,14 +120,14 @@ sprite -s my-sprite exec -- ls -la
 
 ```bash
 # Create multiple sprites
-vibe-link create frontend
-vibe-link create backend
-vibe-link create database
+vibe-engine create frontend
+vibe-engine create backend
+vibe-engine create database
 
 # Connect to any of them
-vibe-link console frontend
-vibe-link console backend
-vibe-link console database
+vibe-engine console frontend
+vibe-engine console backend
+vibe-engine console database
 ```
 
 ## Tips and Tricks
@@ -138,8 +138,8 @@ Instead of passing `-key` every time:
 
 ```bash
 export SPRITE_API_KEY=sk_your_key
-vibe-link create sprite1
-vibe-link console sprite1
+vibe-engine create sprite1
+vibe-engine console sprite1
 ```
 
 ### 2. Different URLs for Different Environments
@@ -147,25 +147,25 @@ vibe-link console sprite1
 ```bash
 # Local development
 export SPRITE_API_URL=http://localhost:8081
-vibe-link console local-dev
+vibe-engine console local-dev
 
 # Production
 export SPRITE_API_URL=https://prod-sprite.fly.dev
-vibe-link console production
+vibe-engine console production
 ```
 
 ### 3. Check Version
 
 ```bash
-vibe-link version
+vibe-engine version
 ```
 
 ### 4. Get Help
 
 ```bash
-vibe-link help
-vibe-link create -h
-vibe-link console -h
+vibe-engine help
+vibe-engine create -h
+vibe-engine console -h
 ```
 
 ### 5. Terminal Issues
@@ -187,7 +187,7 @@ You forgot to set `SPRITE_API_KEY` or pass `-key`:
 ```bash
 export SPRITE_API_KEY=sk_your_key
 # OR
-vibe-link create my-sprite -key sk_your_key
+vibe-engine create my-sprite -key sk_your_key
 ```
 
 ### "unauthorized: invalid API key"
@@ -201,7 +201,7 @@ Make sure:
 2. sprite-mobile is running: `sprite-env services list`
 3. The URL is correct: check `SPRITE_API_URL`
 
-### "command not found: vibe-link"
+### "command not found: vibe-engine"
 
 You haven't installed it or `~/bin` isn't in your PATH:
 
@@ -227,7 +227,7 @@ export PATH="$PATH:$HOME/bin"
 SPRITE_NAME="auto-configured"
 
 echo "Creating sprite..."
-vibe-link create "$SPRITE_NAME"
+vibe-engine create "$SPRITE_NAME"
 
 echo "Waiting for sprite to be ready..."
 sleep 10
@@ -240,7 +240,7 @@ sprite -s "$SPRITE_NAME" exec -- bash -c '
   echo "Setup complete"
 '
 
-echo "Done! Connect with: vibe-link console $SPRITE_NAME"
+echo "Done! Connect with: vibe-engine console $SPRITE_NAME"
 ```
 
 ### Example: Health Check Script
@@ -259,7 +259,7 @@ fi
 echo "Checking $SPRITE_NAME..."
 
 # Try to create a console connection
-timeout 5 vibe-link console "$SPRITE_NAME" <<EOF
+timeout 5 vibe-engine console "$SPRITE_NAME" <<EOF
 echo "HEALTH_OK"
 exit
 EOF

@@ -1,4 +1,4 @@
-# vibe-link CLI
+# vibe-engine CLI
 
 A command-line utility for interacting with the Sprite Console API. This tool allows you to create sprites and connect to their interactive consoles via HTTP/WebSocket, without needing SSH access.
 
@@ -20,7 +20,7 @@ A command-line utility for interacting with the Sprite Console API. This tool al
 ### Build from Source
 
 ```bash
-cd ~/.sprite-mobile/cmd/vibe-link
+cd ~/.sprite-mobile/cmd/vibe-engine
 
 # Download dependencies
 go mod download
@@ -35,7 +35,7 @@ make install
 Or build manually:
 
 ```bash
-go build -o vibe-link .
+go build -o vibe-engine .
 ```
 
 ### Add to PATH
@@ -54,19 +54,19 @@ Add this to your `~/.bashrc` or `~/.zshrc` to make it permanent.
 
 ```bash
 # Show help
-vibe-link help
+vibe-engine help
 
 # Show version
-vibe-link version
+vibe-engine version
 
 # Create a sprite
-vibe-link create <sprite-name> -key <api-key>
+vibe-engine create <sprite-name> -key <api-key>
 
 # Connect to sprite console
-vibe-link console <sprite-name> -key <api-key>
+vibe-engine console <sprite-name> -key <api-key>
 
 # Get sprite URL
-vibe-link url <sprite-name> -key <api-key>
+vibe-engine url <sprite-name> -key <api-key>
 ```
 
 ### Create a Sprite
@@ -74,10 +74,10 @@ vibe-link url <sprite-name> -key <api-key>
 Create a new sprite with the given name:
 
 ```bash
-vibe-link create my-new-sprite -key sk_test_12345
+vibe-engine create my-new-sprite -key sk_test_12345
 
 # With custom URL
-vibe-link create my-new-sprite \
+vibe-engine create my-new-sprite \
   -url https://my-sprite.fly.dev \
   -key sk_test_12345
 ```
@@ -97,10 +97,10 @@ Output:
 Connect to an interactive sprite console:
 
 ```bash
-vibe-link console my-sprite -key sk_test_12345
+vibe-engine console my-sprite -key sk_test_12345
 
 # With custom URL
-vibe-link console my-sprite \
+vibe-engine console my-sprite \
   -url wss://my-sprite.fly.dev \
   -key sk_test_12345
 ```
@@ -112,10 +112,10 @@ The console provides a full interactive terminal session. Press `Ctrl+D` or type
 Get the public URL for an existing sprite:
 
 ```bash
-vibe-link url my-sprite -key sk_test_12345
+vibe-engine url my-sprite -key sk_test_12345
 
 # With custom URL
-vibe-link url my-sprite \
+vibe-engine url my-sprite \
   -url https://my-sprite.fly.dev \
   -key sk_test_12345
 ```
@@ -140,9 +140,9 @@ export SPRITE_API_KEY=sk_test_12345
 export SPRITE_API_URL=https://my-sprite.fly.dev
 
 # Now you can omit the flags
-vibe-link create my-new-sprite
-vibe-link console my-sprite
-vibe-link url my-sprite
+vibe-engine create my-new-sprite
+vibe-engine console my-sprite
+vibe-engine url my-sprite
 ```
 
 Add these to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make them permanent.
@@ -178,10 +178,10 @@ export SPRITE_API_KEY=sk_test_12345
 export SPRITE_API_URL=https://sprite.example.com
 
 # Create a new sprite
-vibe-link create dev-environment
+vibe-engine create dev-environment
 
 # Connect to its console
-vibe-link console dev-environment
+vibe-engine console dev-environment
 
 # Once connected, you can run commands
 whoami
@@ -194,11 +194,11 @@ exit
 
 ```bash
 # Using local sprite-mobile instance
-vibe-link create test-sprite \
+vibe-engine create test-sprite \
   -url http://localhost:8081 \
   -key sk_local_test_key
 
-vibe-link console test-sprite \
+vibe-engine console test-sprite \
   -url ws://localhost:8081 \
   -key sk_local_test_key
 ```
@@ -207,7 +207,7 @@ vibe-link console test-sprite \
 
 ```bash
 # Connect to a remote sprite
-vibe-link console production-app \
+vibe-engine console production-app \
   -url wss://my-sprite.fly.dev \
   -key sk_prod_key_12345
 ```
@@ -237,11 +237,11 @@ make build-all
 ```
 
 This creates:
-- `vibe-link-linux-amd64`
-- `vibe-link-linux-arm64`
-- `vibe-link-darwin-amd64` (Intel Mac)
-- `vibe-link-darwin-arm64` (Apple Silicon)
-- `vibe-link-windows-amd64.exe`
+- `vibe-engine-linux-amd64`
+- `vibe-engine-linux-arm64`
+- `vibe-engine-darwin-amd64` (Intel Mac)
+- `vibe-engine-darwin-arm64` (Apple Silicon)
+- `vibe-engine-windows-amd64.exe`
 
 ## Troubleshooting
 
@@ -280,7 +280,7 @@ Or press `Ctrl+C` to force exit, which should restore the terminal.
 ### Project Structure
 
 ```
-cmd/vibe-link/
+cmd/vibe-engine/
 ├── main.go          # Main application code
 ├── go.mod           # Go module definition
 ├── Makefile         # Build automation

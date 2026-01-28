@@ -1,7 +1,7 @@
 .PHONY: build install clean test
 
 # Binary name
-BINARY_NAME=vibe-link
+BINARY_NAME=vibe-engine
 
 # Build directory
 BUILD_DIR=bin
