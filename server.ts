@@ -65,16 +65,30 @@ function getContentType(path: string): string {
 async function proxyToDevServer(req: Request, url: URL): Promise<Response> {
   try {
     const targetUrl = `${DEV_SERVER_URL}${url.pathname}${url.search}`;
+
+    // Filter out Accept-Encoding to get uncompressed response from dev server
+    // This prevents double-compression issues with Fly.io edge
+    const headers = new Headers(req.headers);
+    headers.delete('Accept-Encoding');
+
     const response = await fetch(targetUrl, {
       method: req.method,
-      headers: req.headers,
+      headers,
       body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
     });
-    // Explicitly create new Response to fix Bun's content-length handling for proxied responses
-    return new Response(response.body, {
+
+    // Read body fully to ensure proper content-length and avoid streaming issues
+    const body = await response.arrayBuffer();
+
+    // Copy headers but remove any encoding-related ones to let Fly.io handle compression
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.delete('Content-Encoding');
+    responseHeaders.delete('Transfer-Encoding');
+
+    return new Response(body, {
       status: response.status,
       statusText: response.statusText,
-      headers: response.headers,
+      headers: responseHeaders,
     });
   } catch (error) {
     return new Response(getDevServerDownHtml(), {
