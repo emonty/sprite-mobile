@@ -60,7 +60,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	command := os.Args[1]
+	// Require "vibe" as the first subcommand
+	if os.Args[1] != "vibe" {
+		if os.Args[1] == "help" || os.Args[1] == "-h" || os.Args[1] == "--help" {
+			printUsage()
+			os.Exit(0)
+		}
+		fmt.Printf("Unknown command: %s\n\n", os.Args[1])
+		printUsage()
+		os.Exit(1)
+	}
+
+	if len(os.Args) < 3 {
+		printUsage()
+		os.Exit(1)
+	}
+
+	command := os.Args[2]
 
 	switch command {
 	case "create":
@@ -70,21 +86,21 @@ func main() {
 	case "url":
 		urlCommand()
 	case "version":
-		fmt.Printf("vibe-engine version %s\n", version)
+		fmt.Printf("stripe vibe version %s\n", version)
 	case "help", "-h", "--help":
 		printUsage()
 	default:
-		fmt.Printf( "Unknown command: %s\n\n", command)
+		fmt.Printf("Unknown command: %s\n\n", command)
 		printUsage()
 		os.Exit(1)
 	}
 }
 
 func printUsage() {
-	fmt.Println(`vibe-engine - CLI utility for Vibe Engine Console API
+	fmt.Println(`Manage Stripe Vibe instances
 
 Usage:
-  vibe-engine <command> [options]
+  stripe vibe <command> [options]
 
 Commands:
   create <name>              Create a new instance
@@ -97,61 +113,61 @@ Commands:
 Create Options:
   -repo <url>                Git repository URL to clone on the instance
   -url <base-url>            Base URL (default: http://localhost:8081)
-  -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
+  -key <api-key>             API key (or set STRIPE_VIBE_API_KEY env var)
 
 Console Options:
   -url <base-url>            Base URL (default: ws://localhost:8081)
-  -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
+  -key <api-key>             API key (or set STRIPE_VIBE_API_KEY env var)
 
 URL Options:
   -url <base-url>            Base URL (default: http://localhost:8081)
-  -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
+  -key <api-key>             API key (or set STRIPE_VIBE_API_KEY env var)
 
 Environment Variables:
-  VIBE_ENGINE_API_KEY             API key for authentication
-  VIBE_ENGINE_API_URL             Base URL for API
+  STRIPE_VIBE_API_KEY        API key for authentication
+  STRIPE_VIBE_API_URL        Base URL for API
 
 Examples:
   # Create a new instance
-  vibe-engine create my-new-instance -key sk_test_12345
+  stripe vibe create my-new-instance -key sk_test_12345
 
   # Connect to instance console
-  vibe-engine console my-instance -key sk_test_12345
+  stripe vibe console my-instance -key sk_test_12345
 
   # Get instance URL
-  vibe-engine url my-instance -key sk_test_12345
+  stripe vibe url my-instance -key sk_test_12345
 
   # Using environment variables
-  export VIBE_ENGINE_API_KEY=sk_test_12345
-  export VIBE_ENGINE_API_URL=https://my-instance.fly.dev
-  vibe-engine create my-new-instance
-  vibe-engine console my-instance
-  vibe-engine url my-instance
+  export STRIPE_VIBE_API_KEY=sk_test_12345
+  export STRIPE_VIBE_API_URL=https://my-instance.fly.dev
+  stripe vibe create my-new-instance
+  stripe vibe console my-instance
+  stripe vibe url my-instance
 `)
 }
 
 func createCommand() {
 	createFlags := flag.NewFlagSet("create", flag.ExitOnError)
-	baseURL := createFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "http://localhost:8081"), "Base URL")
-	apiKey := createFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
+	baseURL := createFlags.String("url", getEnvOrDefault("STRIPE_VIBE_API_URL", "http://localhost:8081"), "Base URL")
+	apiKey := createFlags.String("key", os.Getenv("STRIPE_VIBE_API_KEY"), "API key")
 	repo := createFlags.String("repo", "", "Git repository URL to clone")
 	debug := createFlags.Bool("debug", false, "Enable debug output")
 
-	args := reorderArgs(os.Args[2:], map[string]bool{
+	args := reorderArgs(os.Args[3:], map[string]bool{
 		"url": true, "key": true, "repo": true,
 	})
 	createFlags.Parse(args)
 
 	if createFlags.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "Error: instance name required")
-		fmt.Fprintln(os.Stderr, "Usage: vibe-engine create <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Usage: stripe vibe create <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
 	spriteName := createFlags.Arg(0)
 
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or VIBE_ENGINE_API_KEY env var)")
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or STRIPE_VIBE_API_KEY env var)")
 		os.Exit(1)
 	}
 
@@ -174,22 +190,22 @@ func createCommand() {
 
 func consoleCommand() {
 	consoleFlags := flag.NewFlagSet("console", flag.ExitOnError)
-	baseURL := consoleFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "ws://localhost:8081"), "Base URL")
-	apiKey := consoleFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
+	baseURL := consoleFlags.String("url", getEnvOrDefault("STRIPE_VIBE_API_URL", "ws://localhost:8081"), "Base URL")
+	apiKey := consoleFlags.String("key", os.Getenv("STRIPE_VIBE_API_KEY"), "API key")
 	debug := consoleFlags.Bool("debug", false, "Enable debug output")
 
-	consoleFlags.Parse(os.Args[2:])
+	consoleFlags.Parse(os.Args[3:])
 
 	if consoleFlags.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "Error: instance name required")
-		fmt.Fprintln(os.Stderr, "Usage: vibe-engine console <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Usage: stripe vibe console <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
 	spriteName := consoleFlags.Arg(0)
 
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or VIBE_ENGINE_API_KEY env var)")
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or STRIPE_VIBE_API_KEY env var)")
 		os.Exit(1)
 	}
 
@@ -212,22 +228,22 @@ func consoleCommand() {
 
 func urlCommand() {
 	urlFlags := flag.NewFlagSet("url", flag.ExitOnError)
-	baseURL := urlFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "http://localhost:8081"), "Base URL")
-	apiKey := urlFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
+	baseURL := urlFlags.String("url", getEnvOrDefault("STRIPE_VIBE_API_URL", "http://localhost:8081"), "Base URL")
+	apiKey := urlFlags.String("key", os.Getenv("STRIPE_VIBE_API_KEY"), "API key")
 	debug := urlFlags.Bool("debug", false, "Enable debug output")
 
-	urlFlags.Parse(os.Args[2:])
+	urlFlags.Parse(os.Args[3:])
 
 	if urlFlags.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "Error: instance name required")
-		fmt.Fprintln(os.Stderr, "Usage: vibe-engine url <name> [-url <base-url>] [-key <api-key>]")
+		fmt.Fprintln(os.Stderr, "Usage: stripe vibe url <name> [-url <base-url>] [-key <api-key>]")
 		os.Exit(1)
 	}
 
 	spriteName := urlFlags.Arg(0)
 
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or VIBE_ENGINE_API_KEY env var)")
+		fmt.Fprintln(os.Stderr, "Error: API key required (use -key flag or STRIPE_VIBE_API_KEY env var)")
 		os.Exit(1)
 	}
 
@@ -343,10 +359,10 @@ func createSprite(config Config, spriteName string, repo string) error {
 	// Success - show clean message
 	fmt.Printf("✓ %s created\n", result.Name)
 	fmt.Printf("\nYou can access it via:\n")
-	fmt.Printf("  • vibe-engine console %s\n", result.Name)
+	fmt.Printf("  • stripe vibe console %s\n", result.Name)
 	if result.PublicURL != "" {
 		fmt.Printf("  • App:         %s\n", result.PublicURL)
-		fmt.Printf("  • Vibe-Engine: %s/vibe-engine\n", result.PublicURL)
+		fmt.Printf("  • Web LLM:     %s/vibe-engine\n", result.PublicURL)
 	}
 
 	// Only show full output in debug mode
@@ -432,7 +448,7 @@ func getSpriteURL(config Config, spriteName string) error {
 
 	if result.PublicURL != "" {
 		fmt.Printf("App:         %s\n", result.PublicURL)
-		fmt.Printf("Vibe-Engine: %s/vibe-engine\n", result.PublicURL)
+		fmt.Printf("Dashboard:   %s/vibe-engine\n", result.PublicURL)
 	} else {
 		fmt.Println("No public URL available for this instance")
 	}

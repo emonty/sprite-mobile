@@ -26,3 +26,6 @@ Thumbs.db
 
 # Bun
 *.lockb
+
+seed-sprite-config
+git-pat
