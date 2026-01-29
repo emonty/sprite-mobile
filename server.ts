@@ -68,9 +68,14 @@ async function proxyToDevServer(req: Request, url: URL): Promise<Response> {
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: req.headers,
-      body: req.body,
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
     });
-    return response;
+    // Explicitly create new Response to fix Bun's content-length handling for proxied responses
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
   } catch (error) {
     return new Response(getDevServerDownHtml(), {
       status: 502,
