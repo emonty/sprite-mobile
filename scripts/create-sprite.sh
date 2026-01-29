@@ -2,7 +2,11 @@
 set -e
 
 # Helper script to create and configure a new sprite with sprite-mobile
-# Usage: ./create-sprite.sh <sprite-name>
+# Usage: ./create-sprite.sh <sprite-name> [git-repo-url]
+#
+# Arguments:
+#   sprite-name    Name of the sprite to create
+#   git-repo-url   Optional git repository URL to clone on the new sprite
 #
 # Authentication: Uses simple password auth (no Tailscale required)
 # Default password: Demopassword
@@ -10,22 +14,25 @@ set -e
 # Handle Ctrl+C gracefully
 trap 'echo ""; echo "Aborted."; exit 130' INT
 
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <sprite-name>"
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <sprite-name> [git-repo-url]"
     echo ""
     echo "Example: $0 my-new-sprite"
+    echo "         $0 my-new-sprite https://github.com/user/repo"
     echo ""
     echo "This script will:"
     echo "  1. Create a new sprite with the given name"
     echo "  2. Make its URL public"
     echo "  3. Transfer .sprite-config from current sprite"
     echo "  4. Run sprite-setup.sh non-interactively"
+    echo "  5. Optionally clone a git repository"
     echo ""
     echo "Authentication: Password auth (default: Demopassword)"
     exit 1
 fi
 
 SPRITE_NAME="$1"
+GIT_REPO="${2:-}"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Retry function for sprite exec commands (new sprites may need time to be ready)
@@ -136,30 +143,125 @@ echo ""
 # Step 4: Create CLAUDE.md with sprite information
 echo "Step 4: Creating CLAUDE.md with sprite information..."
 if [ -n "$PUBLIC_URL" ]; then
-    CLAUDE_MD_CONTENT="# Sprite Information
+    # Generate CLAUDE.md content into a temp file, then base64 transfer
+    # (heredocs over sprite exec are unreliable)
+    CLAUDE_MD_TMP=$(mktemp)
+    cat > "$CLAUDE_MD_TMP" << CLAUDE_EOF
+# Claude Instructions
 
-## Public URL
+## First Steps
+
+Always read \`/.sprite/llm.txt\` at the start of a session to understand the Sprite environment, available services, checkpoints, and network policy.
+
+## Sprite Information
+
+### Public URL
 Your sprite's public URL is: $PUBLIC_URL
 
-## Important Notes for Development
+### Important Notes for Development
 
 When running development servers (e.g., \`npm run dev\`, \`python -m http.server\`, etc.), **DO NOT** communicate localhost URLs to users.
 
 Instead:
 - Always use your public URL: $PUBLIC_URL
 - Replace \`localhost\` or \`127.0.0.1\` with your sprite domain
-- Example: If a dev server runs on port 3000, tell users to visit \`$PUBLIC_URL:3000\` (not \`localhost:3000\`)
+- Example: If a dev server runs on port 3000, tell users to visit \`$PUBLIC_URL\` (not \`localhost:3000\`)
+- The sprite-mobile proxy forwards root path requests to localhost:3000 automatically
 
 This ensures users can actually access services you run on this sprite.
-"
-    sprite_exec_retry bash -c "cat > ~/CLAUDE.md << 'EOF'
-$CLAUDE_MD_CONTENT
-EOF"
+
+## Services
+
+### sprite-mobile (port 8080)
+- sprite-mobile UI accessible at \`/vibe-engine/\`
+- **Proxies port 3000 to root path** - User dev servers run on port 3000
+
+### Port 3000: Standard Dev Server Port
+
+Port 3000 is reserved for user development servers. sprite-mobile automatically proxies all requests to the root path (\`/\`) to \`localhost:3000\`, making your dev server accessible through the public URL.
+
+**How it works:**
+- \`/vibe-engine/*\` - sprite-mobile UI (reserved path)
+- \`/*\` - Proxied to your dev server on port 3000
+
+**Framework Examples:**
+
+**Vite (React, Vue, Svelte, etc.):**
+\`\`\`bash
+npm create vite@latest my-app
+cd my-app
+npm install
+# Edit vite.config.js to set port 3000:
+export default {
+  server: { port: 3000 }
+}
+npm run dev
+# Access at $PUBLIC_URL/
+\`\`\`
+
+**Next.js:**
+\`\`\`bash
+npx create-next-app@latest my-app
+cd my-app
+npm run dev -- -p 3000
+# Access at $PUBLIC_URL/
+\`\`\`
+
+**Python HTTP Server:**
+\`\`\`bash
+python3 -m http.server 3000
+# Access at $PUBLIC_URL/
+\`\`\`
+
+**Important Notes:**
+- The \`/vibe-engine\` path is reserved for sprite-mobile UI
+- Always start your dev server on port 3000
+- HMR/live reload works automatically through WebSocket proxying
+- No authentication required for proxied requests
+
+## Checkpointing
+
+Claude should proactively manage checkpoints:
+- Create checkpoints after significant changes or successful implementations
+- Before risky operations, create a checkpoint as a restore point
+- Use \`sprite-env checkpoint list\` to view available checkpoints
+- Use \`sprite-env checkpoint restore <name>\` to restore if needed
+
+## Git Commits
+
+Do NOT add "Co-Authored-By" lines to commit messages. Just write normal commit messages without any co-author attribution.
+CLAUDE_EOF
+    CLAUDE_MD_B64=$(base64 -w0 "$CLAUDE_MD_TMP" 2>/dev/null || base64 "$CLAUDE_MD_TMP" | tr -d '\n')
+    rm "$CLAUDE_MD_TMP"
+    sprite_exec_retry bash -c "echo '$CLAUDE_MD_B64' | base64 -d > ~/CLAUDE.md"
     echo "  Created ~/CLAUDE.md"
 else
     echo "  Skipped (no public URL available)"
 fi
 echo ""
+
+# Step 4b: Clone git repository if specified
+if [ -n "$GIT_REPO" ]; then
+    echo "Step 4b: Cloning git repository..."
+    REPO_DIR=$(basename "$GIT_REPO" .git)
+    sprite_exec_retry bash -c "cd ~ && git clone '$GIT_REPO'"
+    echo "  Cloned $GIT_REPO into ~/$REPO_DIR"
+
+    # Append project repository info to CLAUDE.md
+    REPO_SECTION_TMP=$(mktemp)
+    cat > "$REPO_SECTION_TMP" << REPO_EOF
+
+## Project Repository
+
+The repository $GIT_REPO has been cloned to ~/$REPO_DIR.
+This is the project you should be working in.
+REPO_EOF
+    REPO_SECTION_B64=$(base64 -w0 "$REPO_SECTION_TMP" 2>/dev/null || base64 "$REPO_SECTION_TMP" | tr -d '\n')
+    rm "$REPO_SECTION_TMP"
+    sprite_exec_retry bash -c "echo '$REPO_SECTION_B64' | base64 -d >> ~/CLAUDE.md"
+    echo "  Added project repository info to ~/CLAUDE.md"
+    echo ""
+fi
 
 # Step 5: Download setup script
 echo "Step 5: Downloading setup script..."

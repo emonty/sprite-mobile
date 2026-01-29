@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/gorilla/websocket"
@@ -35,6 +36,7 @@ type Config struct {
 
 type CreateSpriteRequest struct {
 	Name string `json:"name"`
+	Repo string `json:"repo,omitempty"`
 }
 
 type CreateSpriteResponse struct {
@@ -86,12 +88,14 @@ Usage:
 
 Commands:
   create <name>              Create a new instance
+    -repo <url>              Git repo to clone on the instance
   console <name>             Connect to an instance console
   url <name>                 Get an instance's public URL
   version                    Show version information
   help                       Show this help message
 
 Create Options:
+  -repo <url>                Git repository URL to clone on the instance
   -url <base-url>            Base URL (default: http://localhost:8081)
   -key <api-key>             API key (or set VIBE_ENGINE_API_KEY env var)
 
@@ -130,9 +134,13 @@ func createCommand() {
 	createFlags := flag.NewFlagSet("create", flag.ExitOnError)
 	baseURL := createFlags.String("url", getEnvOrDefault("VIBE_ENGINE_API_URL", "http://localhost:8081"), "Base URL")
 	apiKey := createFlags.String("key", os.Getenv("VIBE_ENGINE_API_KEY"), "API key")
+	repo := createFlags.String("repo", "", "Git repository URL to clone")
 	debug := createFlags.Bool("debug", false, "Enable debug output")
 
-	createFlags.Parse(os.Args[2:])
+	args := reorderArgs(os.Args[2:], map[string]bool{
+		"url": true, "key": true, "repo": true,
+	})
+	createFlags.Parse(args)
 
 	if createFlags.NArg() < 1 {
 		fmt.Fprintln(os.Stderr, "Error: instance name required")
@@ -158,7 +166,7 @@ func createCommand() {
 		Debug:   *debug,
 	}
 
-	if err := createSprite(config, spriteName); err != nil {
+	if err := createSprite(config, spriteName, *repo); err != nil {
 		fmt.Printf( "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -240,11 +248,12 @@ func urlCommand() {
 	}
 }
 
-func createSprite(config Config, spriteName string) error {
+func createSprite(config Config, spriteName string, repo string) error {
 	fmt.Printf("Creating instance: %s\n", spriteName)
 
 	reqBody := CreateSpriteRequest{
 		Name: spriteName,
+		Repo: repo,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -562,4 +571,29 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// reorderArgs moves flag arguments before positional arguments so Go's
+// flag package can parse them. valueFlags lists flags that take a value.
+func reorderArgs(args []string, valueFlags map[string]bool) []string {
+	var flags []string
+	var positional []string
+	i := 0
+	for i < len(args) {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			name := strings.TrimLeft(arg, "-")
+			flags = append(flags, arg)
+			if valueFlags[name] && i+1 < len(args) {
+				flags = append(flags, args[i+1])
+				i += 2
+			} else {
+				i++
+			}
+		} else {
+			positional = append(positional, arg)
+			i++
+		}
+	}
+	return append(flags, positional...)
 }

@@ -1108,7 +1108,7 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
       const apiKey = extractApiKey(authHeader);
 
       // Parse request body
-      let body: { name?: string };
+      let body: { name?: string; repo?: string };
       try {
         body = await req.json();
       } catch {
@@ -1127,7 +1127,15 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         }, { status: 400 });
       }
 
-      console.log(`[API] Creating sprite: ${spriteName}`);
+      // Validate repo URL if provided
+      const repoUrl = body.repo;
+      if (repoUrl && !/^(https:\/\/|git@)/.test(repoUrl)) {
+        return Response.json({
+          error: "Invalid repo URL. Must start with 'https://' or 'git@'."
+        }, { status: 400 });
+      }
+
+      console.log(`[API] Creating sprite: ${spriteName}${repoUrl ? ` with repo: ${repoUrl}` : ""}`);
 
       // Run create-sprite.sh script
       const scriptPath = join(process.env.HOME || "/home/sprite", ".sprite-mobile/scripts/create-sprite.sh");
@@ -1138,9 +1146,13 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         scriptEnv.STRIPE_API_KEY = apiKey;
       }
 
+      // Build command with optional repo argument
+      const cmd = ["bash", scriptPath, spriteName];
+      if (repoUrl) cmd.push(repoUrl);
+
       try {
         const proc = spawn({
-          cmd: ["bash", scriptPath, spriteName],
+          cmd,
           stdout: "pipe",
           stderr: "pipe",
           env: scriptEnv,
