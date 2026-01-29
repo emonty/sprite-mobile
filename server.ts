@@ -80,10 +80,18 @@ async function proxyToDevServer(req: Request, url: URL): Promise<Response> {
     // Read body fully to ensure proper content-length and avoid streaming issues
     const body = await response.arrayBuffer();
 
-    // Copy headers but remove any encoding-related ones to let Fly.io handle compression
-    const responseHeaders = new Headers(response.headers);
-    responseHeaders.delete('Content-Encoding');
-    responseHeaders.delete('Transfer-Encoding');
+    // Copy headers but remove encoding-related ones to let Fly.io handle compression
+    const responseHeaders = new Headers();
+    for (const [key, value] of response.headers.entries()) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey !== 'content-encoding' &&
+          lowerKey !== 'transfer-encoding' &&
+          lowerKey !== 'content-length') {
+        responseHeaders.set(key, value);
+      }
+    }
+    // Explicitly set content-length from actual body size
+    responseHeaders.set('Content-Length', String(body.byteLength));
 
     return new Response(body, {
       status: response.status,
