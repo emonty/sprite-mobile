@@ -1713,6 +1713,9 @@ step_11_claude_md() {
 
     CLAUDE_MD_PATH="$HOME/CLAUDE.md"
 
+    # Determine the public URL to use (with fallback)
+    local PUBLIC_URL="${SPRITE_PUBLIC_URL:-[not configured - run sprite-setup.sh with --url]}"
+
     echo "Creating CLAUDE.md with environment instructions..."
     cat > "$CLAUDE_MD_PATH" << 'CLAUDE_EOF'
 # Claude Instructions
@@ -1720,6 +1723,12 @@ step_11_claude_md() {
 ## First Steps
 
 Always read `/.sprite/llm.txt` at the start of a session to understand the Sprite environment, available services, checkpoints, and network policy.
+
+## Public URL
+
+Your sprite's public URL is: **__PUBLIC_URL_PLACEHOLDER__**
+
+When you start a dev server on port 3000, users can access it at this URL. Always use this URL when telling users how to access their application - never use `localhost`.
 
 ## Checkpointing
 
@@ -1750,7 +1759,9 @@ sprite-env services logs sprite-mobile  # View logs
 
 #### Port 3000: Standard Dev Server Port
 
-Port 3000 is reserved for user development servers. sprite-mobile automatically proxies all requests to the root path (`/`) to `localhost:3000`, making your dev server accessible through the public port 8080.
+Port 3000 is reserved for user development servers. sprite-mobile automatically proxies all requests to the root path (`/`) to `localhost:3000`, making your dev server accessible through the public URL.
+
+**Your public URL:** __PUBLIC_URL_PLACEHOLDER__
 
 **How it works:**
 - `/vibe-engine/*` - sprite-mobile UI (reserved path)
@@ -1771,7 +1782,7 @@ export default {
 }
 
 npm run dev
-# Access at your sprite's public URL
+# Access at __PUBLIC_URL_PLACEHOLDER__
 ```
 
 **Next.js:**
@@ -1779,18 +1790,19 @@ npm run dev
 npx create-next-app@latest my-app
 cd my-app
 npm run dev -- -p 3000
-# Access at your sprite's public URL
+# Access at __PUBLIC_URL_PLACEHOLDER__
 ```
 
 **Python HTTP Server:**
 ```bash
 python3 -m http.server 3000
-# Access at your sprite's public URL
+# Access at __PUBLIC_URL_PLACEHOLDER__
 ```
 
 **Important Notes:**
 - The `/vibe-engine` path is reserved for sprite-mobile UI
 - Always start your dev server on port 3000
+- Tell users to access their app at: __PUBLIC_URL_PLACEHOLDER__
 - No authentication required for proxied requests
 
 ### claude-hub (port 9090)
@@ -1842,7 +1854,10 @@ stripe listen --forward-to localhost:3000/webhook
 Prefer Stripe Checkout over custom payment forms - it handles PCI compliance, 3D Secure, and provides a polished UX out of the box.
 CLAUDE_EOF
 
-    echo "Created $CLAUDE_MD_PATH"
+    # Replace placeholder with actual URL
+    sed -i "s|__PUBLIC_URL_PLACEHOLDER__|${PUBLIC_URL}|g" "$CLAUDE_MD_PATH"
+
+    echo "Created $CLAUDE_MD_PATH with public URL: $PUBLIC_URL"
 }
 
 step_12_claude_hub() {
