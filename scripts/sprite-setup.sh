@@ -1739,12 +1739,59 @@ Mobile-friendly web interface for chatting with Claude Code. Located at `~/.spri
 - Uses WebSocket for real-time streaming
 - Works with claude-hub for multi-client sync
 - Protected by password authentication (default: Demopassword)
+- **Proxies port 3000 to root path** - User dev servers run on port 3000
+- sprite-mobile UI accessible at `/vibe-engine/`
 
 Service command:
 ```bash
 sprite-env services list  # View status
 sprite-env services logs sprite-mobile  # View logs
 ```
+
+#### Port 3000: Standard Dev Server Port
+
+Port 3000 is reserved for user development servers. sprite-mobile automatically proxies all requests to the root path (`/`) to `localhost:3000`, making your dev server accessible through the public port 8080.
+
+**How it works:**
+- `/vibe-engine/*` - sprite-mobile UI (reserved path)
+- `/*` - Proxied to your dev server on port 3000
+- WebSocket connections (HMR) are also proxied automatically
+
+**Framework Examples:**
+
+**Vite (React, Vue, Svelte, etc.):**
+```bash
+npm create vite@latest my-app
+cd my-app
+npm install
+
+# Edit vite.config.js to set port 3000:
+export default {
+  server: { port: 3000 }
+}
+
+npm run dev
+# Access at your sprite's public URL
+```
+
+**Next.js:**
+```bash
+npx create-next-app@latest my-app
+cd my-app
+npm run dev -- -p 3000
+# Access at your sprite's public URL
+```
+
+**Python HTTP Server:**
+```bash
+python3 -m http.server 3000
+# Access at your sprite's public URL
+```
+
+**Important Notes:**
+- The `/vibe-engine` path is reserved for sprite-mobile UI
+- Always start your dev server on port 3000
+- No authentication required for proxied requests
 
 ### claude-hub (port 9090)
 WebSocket hub for multi-client Claude Code session synchronization. Located at `~/.claude-hub/`.
